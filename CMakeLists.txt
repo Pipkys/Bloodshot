@@ -106,7 +106,7 @@ target_include_directories(ImGuiFileDialog PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/i
 
 #Preprocessing
 execute_process(COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
-	"${BLOODSHOT_BINARIES_DIR}/Bloodshot Header Tool.exe" 
+	"${BLOODSHOT_BINARIES_DIR}/Bloodshot Header Tool.exe"
 	Sources:${BLOODSHOT_SOURCE_DIR}/Runtime
 	Output:${BLOODSHOT_INTERMEDIATE_DIR}
 	COMMENT "Run Bloodshot Header Tool on Runtime sources")
