@@ -1,16 +1,17 @@
 #pragma once
 
-#include "BaseUI.h"
-#include "GUI.h"
-#include "Platform/Platform.h"
-#include "Settings.h"
-#include "UI/AddProjectWindow/AddProjectWindow.h"
-//#include "UI/DebugWindow/DebugWindow.h"
-#include "UI/MainWindow/MainWindow.h"
-#include "UI/NewProjectWindow/NewProjectWindow.h"
-#include "UI/OpenProjectWindow/OpenProjectWindow.h"
+#include "Core.h"
 
-#include <list>
+#include "GUI.h"
+#include "LauncherWindow.h"
+#include "Settings.h"
+#include "Translator.h"
+#include "Windows/AddProjectWindow.h"
+//#include "Windows/DebugWindow.h"
+#include "Windows/MainWindow.h"
+#include "Windows/NewProjectWindow.h"
+#include "Windows/OpenProjectWindow.h"
+
 #include <memory>
 
 namespace Bloodshot::Launcher
@@ -28,7 +29,7 @@ namespace Bloodshot::Launcher
 	private:
 		FLauncher() {}
 
-		std::list<IBaseUI*> InterfaceParts;
+		TList<ILauncherWindow*> InterfaceParts;
 		bool bLaunched = false;
 
 		NODISCARD static FLauncher& GetInstance();
@@ -40,27 +41,47 @@ namespace Bloodshot::Launcher
 				return;
 			}
 
+			(void)FGui::GetInstance();
+
 			for (size_t FontSize = 4; FontSize <= 36; ++FontSize)
 			{
-				FGui::LoadFontFromFile(FSettings::FontPath.string().c_str(), (float)FontSize);
+				FGui::LoadFontFromFile(FSettings::FontPath.string().c_str(), (float)FontSize, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
 			}
+
+			using Shared::FTranslator;
+			using Shared::ELanguage;
+			const ELanguage CurrentLanguage = static_cast<Shared::ELanguage>(FSettings::GetLanguageIndex());
+			FTranslator::SetLanguage(ELanguage::Russian);
+			FTranslator::AddPhraseToCurrentDictionary("Projects", UTF8TEXT("Проекты"));
+			FTranslator::AddPhraseToCurrentDictionary("Add", UTF8TEXT("Добавить"));
+			FTranslator::AddPhraseToCurrentDictionary("New Project", UTF8TEXT("Новый Проект"));
+			FTranslator::AddPhraseToCurrentDictionary("Settings", UTF8TEXT("Настройки"));
+			FTranslator::AddPhraseToCurrentDictionary("Projects Path", UTF8TEXT("Путь Проектов"));
+			FTranslator::AddPhraseToCurrentDictionary("Project Path", UTF8TEXT("Путь Проекта"));
+			FTranslator::AddPhraseToCurrentDictionary("Create", UTF8TEXT("Создать"));
+			FTranslator::AddPhraseToCurrentDictionary("Project Name", UTF8TEXT("Название Проекта"));
+			FTranslator::AddPhraseToCurrentDictionary("Language", UTF8TEXT("Язык"));
+			FTranslator::AddPhraseToCurrentDictionary("English", UTF8TEXT("Английский"));
+			FTranslator::AddPhraseToCurrentDictionary("Russian", UTF8TEXT("Русский"));
+			FTranslator::AddPhraseToCurrentDictionary("Add Project", UTF8TEXT("Добавить Проект"));
+			FTranslator::SetLanguage(CurrentLanguage);
 
 			FGui::LoadTextureFromFile("Logo512", FSettings::LogoPath.string().c_str());
 			FGui::LoadTextureFromFile("SettingsIcon512", FSettings::SettingsIconPath.string().c_str());
 			FGui::LoadTextureFromFile("BackIcon512", FSettings::BackIconPath.string().c_str());
 
-			InterfaceParts.push_back(&FMainWindow::GetInstance());
-			//InterfaceParts.push_back(&FDebugWindow::GetInstance());
-			InterfaceParts.push_back(&FAddProjectWindow::GetInstance());
-			InterfaceParts.push_back(&FNewProjectWindow::GetInstance());
-			InterfaceParts.push_back(&FOpenProjectWindow::GetInstance());
+			InterfaceParts.AddTail(&FMainWindow::GetInstance());
+			//InterfaceParts.AddTail(&FDebugWindow::GetInstance());
+			InterfaceParts.AddTail(&FAddProjectWindow::GetInstance());
+			InterfaceParts.AddTail(&FNewProjectWindow::GetInstance());
+			InterfaceParts.AddTail(&FOpenProjectWindow::GetInstance());
 
 			bLaunched = true;
 
 			while (FGui::IsRunning())
 			{
 				FGui::BeginRender();
-				for (IBaseUI* InterfacePart : InterfaceParts)
+				for (ILauncherWindow* const InterfacePart : InterfaceParts)
 				{
 					InterfacePart->Draw();
 				}

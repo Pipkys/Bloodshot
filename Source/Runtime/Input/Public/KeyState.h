@@ -7,13 +7,12 @@ namespace Bloodshot
 	enum class EKeyState : uint8_t
 	{
 		Release = 0,
-		Press,
-		Repeat
+		Press
 	};
 
 	enum class EMouseButtonState : uint8_t
 	{
-		Press = 0,
-		Release
+		Release = 0,
+		Press
 	};
 }

@@ -3,6 +3,7 @@
 #pragma warning(push)
 #pragma warning(disable: 26495) // Variable '(UniqueID, TypeID, ObjectClass)' is uninitialized
 
+#include "Object/ObjectMacros.h"
 #include "Platform/Platform.h"
 #include "Templates/TypeTraits.h"
 
@@ -23,6 +24,7 @@ namespace Bloodshot
 
 	class FClass;
 
+	BSCLASS();
 	class IObject
 	{
 		friend class Private::Object::FObjectCore;
@@ -40,32 +42,32 @@ namespace Bloodshot
 			return GetPrivateStaticClass();
 		};
 
-		NODISCARD FORCEINLINE uint32_t GetUniqueID() const noexcept
+		NODISCARD FORCEINLINE uint32_t GetUniqueID() const
 		{
 			return UniqueID;
 		}
 
-		NODISCARD FORCEINLINE uint32_t GetTypeID() const noexcept
+		NODISCARD FORCEINLINE uint32_t GetTypeID() const
 		{
 			return TypeID;
 		}
 
-		NODISCARD FORCEINLINE IObject* GetObject() noexcept
+		NODISCARD FORCEINLINE IObject* GetObject()
 		{
 			return this;
 		}
 
-		NODISCARD FORCEINLINE const IObject* GetObject() const noexcept
+		NODISCARD FORCEINLINE const IObject* GetObject() const
 		{
 			return this;
 		}
 
-		NODISCARD FORCEINLINE FClass* GetClass() const noexcept
+		NODISCARD FORCEINLINE FClass* GetClass() const
 		{
 			return ObjectClass;
 		}
 
-		NODISCARD bool IsA(const FClass* const Class) const noexcept;
+		NODISCARD bool IsA(const FClass* const InClass) const;
 
 	private:
 		uint32_t UniqueID;

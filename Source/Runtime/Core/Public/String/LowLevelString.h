@@ -14,17 +14,17 @@ namespace Bloodshot
 		public:
 			using ElementType = char;
 
-			NODISCARD FORCEINLINE char& operator[](const size_t Index) noexcept
+			NODISCARD FORCEINLINE char& operator[](const size_t Index)
 			{
 				return Data[Index];
 			}
 
-			NODISCARD FORCEINLINE char* GetData() noexcept
+			NODISCARD FORCEINLINE char* GetData()
 			{
 				return Data;
 			}
 
-			NODISCARD FORCEINLINE size_t GetSize() const noexcept
+			NODISCARD FORCEINLINE size_t GetSize() const
 			{
 				return Size;
 			}

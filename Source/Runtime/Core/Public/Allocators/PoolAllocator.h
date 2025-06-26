@@ -34,11 +34,9 @@ namespace Bloodshot
 			using Super = IAllocator::NonContiguous::ForAnyElementType;
 
 		public:
-
-
-			NODISCARD FORCEINLINE FPoolAllocatorStats GetStats() const noexcept
+			NODISCARD FORCEINLINE FPoolAllocatorStats GetStats() const
 			{
-				FPoolAllocatorStats Stats =
+				return
 				{
 					.BlockHeaderSize = BlockHeaderSize,
 					.BlockSize = BlockSize,
@@ -49,8 +47,6 @@ namespace Bloodshot
 					.FreeBlockCount = FreeBlocksInfo.Count,
 					.BusyBlockCount = BusyBlocksInfo.Count
 				};
-
-				return Stats;
 			}
 
 			NODISCARD void* Allocate()
@@ -70,6 +66,12 @@ namespace Bloodshot
 				}
 				else
 				{
+					//if (ChunksInfo.Count == 13 && FreeBlocksInfo.Count == 13)
+					//{
+					//	volatile int a = 0;
+					//	volatile int* bdsf = &a;
+					//	volatile char* dassd = (char*)0;
+					//}
 					FreeBlock = FreeBlocksInfo.Tail;
 					FreeBlocksInfo.Tail = FreeBlocksInfo.Tail->Previous;
 					FreeBlocksInfo.Tail->Next = nullptr;
@@ -88,7 +90,7 @@ namespace Bloodshot
 				{
 					BusyBlocksInfo.Tail->Next = FreeBlock;
 					FreeBlock->Previous = BusyBlocksInfo.Tail;
-					BusyBlocksInfo.Tail = BusyBlocksInfo.Tail->Next;
+					BusyBlocksInfo.Tail = FreeBlock;
 				}
 				++BusyBlocksInfo.Count;
 
@@ -163,7 +165,7 @@ namespace Bloodshot
 				if (!FreeBlocksInfo.Count)
 				{
 					FreeBlocksInfo.Head = BusyBlocksInfo.Head;
-					FreeBlocksInfo.Tail = FreeBlocksInfo.Head;
+					FreeBlocksInfo.Tail = BusyBlocksInfo.Tail;
 					FreeBlocksInfo.Count = BusyBlocksInfo.Count;
 				}
 				else
@@ -252,12 +254,12 @@ namespace Bloodshot
 				if (!ChunksInfo.Count)
 				{
 					ChunksInfo.Head = NewChunk;
-					ChunksInfo.Tail = ChunksInfo.Head;
+					ChunksInfo.Tail = NewChunk;
 				}
 				else
 				{
 					ChunksInfo.Tail->Next = NewChunk;
-					ChunksInfo.Tail = ChunksInfo.Tail->Next;
+					ChunksInfo.Tail = NewChunk;
 				}
 
 				FBlockHeader* const ChunkData = NewChunk->Data;
@@ -416,27 +418,27 @@ namespace Bloodshot
 					return Temp -= Offset;
 				}
 
-				FORCEINLINE explicit operator bool() const noexcept
+				FORCEINLINE explicit operator bool() const
 				{
 					return Current && Current->bInUse;
 				}
 
-				FORCEINLINE bool operator==(const TBaseIterator& Other) const noexcept
+				FORCEINLINE bool operator==(const TBaseIterator& Other) const
 				{
 					return Current == Other.Current && Current->bInUse == Other.Current->bInUse;
 				}
 
-				FORCEINLINE bool operator!=(const TBaseIterator& Other) const noexcept
+				FORCEINLINE bool operator!=(const TBaseIterator& Other) const
 				{
 					return Current != Other.Current || Current->bInUse != Other.Current->bInUse;
 				}
 
-				FORCEINLINE void SetToEnd() noexcept
+				FORCEINLINE void SetToEnd()
 				{
 					Current = Tail;
 				}
 
-				FORCEINLINE void Reset() noexcept
+				FORCEINLINE void Reset()
 				{
 					Current = Head;
 				}
@@ -474,12 +476,12 @@ namespace Bloodshot
 				}
 			};
 
-			FORCEINLINE FIterator CreateIterator() noexcept
+			FORCEINLINE FIterator CreateIterator()
 			{
 				return FIterator(Super::BusyBlocksInfo.Head, Super::BusyBlocksInfo.Tail, Super::BusyBlocksInfo.Head);
 			}
 
-			FORCEINLINE FConstIterator CreateConstIterator() const noexcept
+			FORCEINLINE FConstIterator CreateConstIterator() const
 			{
 				return FConstIterator(Super::BusyBlocksInfo.Head, Super::BusyBlocksInfo.Tail, Super::BusyBlocksInfo.Head);
 			}

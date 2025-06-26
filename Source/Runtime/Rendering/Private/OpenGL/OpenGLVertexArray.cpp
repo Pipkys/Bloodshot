@@ -1,60 +1,54 @@
-#include "Misc/AssertionMacros.h"
+#include "VertexArray.h"
+#include "IndexBuffer.h"
 #include "OpenGL/OpenGLHeader.h"
-#include "OpenGL/OpenGLVertexArray.h"
-#include "Platform/Platform.h"
-#include "Profiling/ProfilingMacros.h"
+#include "OpenGL/ShaderDataTypeToOpenGLBaseType.h"
+#include "Vertex.h"
+#include "VertexBuffer.h"
 
 namespace Bloodshot
 {
-	FOpenGLVertexArray::FOpenGLVertexArray()
+	FVertexArray::FVertexArray()
 	{
-		BS_PROFILE_FUNCTION();
-
 		glCreateVertexArrays(1, &UniqueID);
 	}
 
-	FOpenGLVertexArray::~FOpenGLVertexArray()
+	FVertexArray::~FVertexArray()
 	{
-		BS_PROFILE_FUNCTION();
-
 		glDeleteVertexArrays(1, &UniqueID);
 	}
 
-	void FOpenGLVertexArray::Bind() const
+	void FVertexArray::Bind() const
 	{
-		BS_PROFILE_FUNCTION();
-
 		glBindVertexArray(UniqueID);
 	}
 
-	void FOpenGLVertexArray::Unbind() const
+	void FVertexArray::Unbind() const
 	{
-		BS_PROFILE_FUNCTION();
-
 		glBindVertexArray(0);
 	}
 
-	void FOpenGLVertexArray::AddVertexBuffer(TUniquePtr<IVertexBuffer>&& VertexBuffer)
+	void FVertexArray::AddVertexBuffer(FVertexBuffer* const InVertexBuffer)
 	{
-		BS_PROFILE_FUNCTION();
+		glVertexArrayVertexBuffer(UniqueID,
+			VertexBufferIndex,
+			InVertexBuffer->GetUniqueID(),
+			VertexBufferOffset,
+			sizeof(FVertex));
+		
+		VertexBufferOffset += InVertexBuffer->GetVertexCount() * sizeof(FVertex);
 
-		const FVertexBufferLayout& VertexBufferLayout = VertexBuffer->GetLayout();
-
-		BS_ASSERT(VertexBufferLayout.GetElements().GetSize(), "Attempting to add VertexBuffer without Layout");
-
-		glBindVertexArray(UniqueID);
-		VertexBuffer->Bind();
+		const FVertexBufferLayout& VertexBufferLayout = InVertexBuffer->GetLayout();
+		BS_CHECK(VertexBufferLayout.GetSize());
 
 		using FElementConstIterator = FVertexBufferLayout::FElementArray::FConstIterator;
-
-		for (FElementConstIterator ElementConstIt = VertexBufferLayout.CreateConstIterator(); ElementConstIt; ++ElementConstIt)
+		for (FElementConstIterator ElementIt = VertexBufferLayout.CreateConstIterator(); ElementIt; ++ElementIt)
 		{
-			const EShaderDataType ShaderDataType = ElementConstIt->Type;
+			const EShaderDataType ShaderDataType = ElementIt->Type;
 			const uint8_t ShaderElementCount = GetShaderDataTypeElementCount(ShaderDataType);
 			const GLenum ShaderOpenGLType = ShaderDataTypeToOpenGLBaseType(ShaderDataType);
-			const GLboolean bElementNormalized = ElementConstIt->bNormalized ? GL_TRUE : GL_FALSE;
+			const GLboolean bElementNormalized = ElementIt->bNormalized ? GL_TRUE : GL_FALSE;
 			const uint16_t LayoutStride = VertexBufferLayout.GetStride();
-			const void* const ElementOffset = (const void*)ElementConstIt->Offset;
+			const uint16_t ElementOffset = ElementIt->Offset;
 
 			switch (ShaderDataType)
 			{
@@ -62,74 +56,54 @@ namespace Bloodshot
 				case EShaderDataType::Int: FALLTHROUGH;
 				case EShaderDataType::Int2: FALLTHROUGH;
 				case EShaderDataType::Int3: FALLTHROUGH;
-				case EShaderDataType::Int4:
-				{
-					glEnableVertexAttribArray(VertexBufferIndex);
-					glVertexAttribIPointer(VertexBufferIndex++,
-						ShaderElementCount,
-						ShaderOpenGLType,
-						LayoutStride,
-						ElementOffset);
-
-					break;
-				}
+				case EShaderDataType::Int4: FALLTHROUGH;
 				case EShaderDataType::Float: FALLTHROUGH;
 				case EShaderDataType::Float2: FALLTHROUGH;
 				case EShaderDataType::Float3: FALLTHROUGH;
 				case EShaderDataType::Float4:
 				{
-					glEnableVertexAttribArray(VertexBufferIndex);
-					glVertexAttribPointer(VertexBufferIndex++,
+					glEnableVertexArrayAttrib(UniqueID, VertexBufferElementIndex);
+					glVertexArrayAttribFormat(UniqueID,
+						VertexBufferElementIndex,
 						ShaderElementCount,
 						ShaderOpenGLType,
 						bElementNormalized,
-						LayoutStride,
 						ElementOffset);
-
-					break;
+					glVertexArrayAttribBinding(UniqueID, VertexBufferElementIndex++, VertexBufferIndex);
+					continue;
 				}
 				case EShaderDataType::Mat3: FALLTHROUGH;
 				case EShaderDataType::Mat4:
 				{
 					for (uint8_t i = 0; i < ShaderElementCount; ++i)
 					{
-						glEnableVertexAttribArray(VertexBufferIndex);
-						glVertexAttribPointer(VertexBufferIndex,
+						glEnableVertexArrayAttrib(UniqueID, VertexBufferElementIndex);
+						glVertexArrayAttribFormat(UniqueID,
+							VertexBufferElementIndex,
 							ShaderElementCount,
 							ShaderOpenGLType,
 							bElementNormalized,
-							LayoutStride,
-							(const void*)(*(uint16_t*)ElementOffset + sizeof(float) * ShaderElementCount * i));
-
-						glVertexAttribDivisor(VertexBufferIndex++, 1);
+							ElementOffset + (uint16_t)((uint8_t)sizeof(float) * ShaderElementCount * i));
+						glVertexArrayAttribBinding(UniqueID, VertexBufferElementIndex, VertexBufferIndex);
+						glVertexArrayBindingDivisor(UniqueID, VertexBufferElementIndex++, 1);
 					}
-
-					break;
+					continue;
 				}
 				default:
 				{
-					BS_ASSERT(false, "Trying to add FVertexBufferElement with unknown EShaderDataType to OpenGLVertexArray");
+					BS_ASSERT(false, "Trying to add FVertexBufferElement with unknown EShaderDataType to VertexArray");
 					break;
 				}
 			}
 		}
 
-		VertexBuffer->Unbind();
-		glBindVertexArray(0);
-
-		VertexCount += VertexBuffers.EmplaceBackGetRef(std::move(VertexBuffer))->GetVertexCount();
+		VertexCount += VertexBuffers.EmplaceBackGetRef(InVertexBuffer)->GetVertexCount();
+		++VertexBufferIndex;
 	}
 
-	void FOpenGLVertexArray::SetIndexBuffer(TUniquePtr<IIndexBuffer>&& NewIndexBuffer)
+	void FVertexArray::SetIndexBuffer(FIndexBuffer* const InIndexBuffer)
 	{
-		BS_PROFILE_FUNCTION();
-
-		glBindVertexArray(UniqueID);
-		NewIndexBuffer->Bind();
-
-		IndexBuffer = std::move(NewIndexBuffer);
-
-		IndexBuffer->Unbind();
-		glBindVertexArray(0);
+		IndexBuffer = InIndexBuffer;
+		glVertexArrayElementBuffer(UniqueID, IndexBuffer->GetUniqueID());
 	}
 }

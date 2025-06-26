@@ -1,24 +1,13 @@
 #pragma once
 
-//#include "Allocator.h"
-//#include "AllocatorTraits.h"
-//#include "Misc/AssertionMacros.h"
+#include "Allocators/Allocator.h"
+#include "Allocators/AllocatorTraits.h"
 #include "Containers/Pair.h"
 #include "Containers/Set.h"
-
-#include <unordered_map>
+#include "Misc/AssertionMacros.h"
 
 namespace Bloodshot
 {
-	// BSTODO: Implement
-
-	//template<typename InKeyType,
-	//	typename InValueType,
-	//	typename InPredicateType = std::equal_to<InKeyType>,
-	//	typename InHashType = std::hash<InKeyType>,
-	//	typename InAllocatorType = std::allocator<TPair<const InKeyType, InValueType>>>
-	//using TMap = std::unordered_map<InKeyType, InValueType, InHashType, InPredicateType, InAllocatorType>;
-
 	template<typename InKeyType, typename InValueType, bool bInAllowDuplicateKeys = false>
 	struct TDefaultMapKeyFuncs : public TBaseKeyFuncs<InKeyType, TPair<InKeyType, InValueType>, bInAllowDuplicateKeys>
 	{
@@ -94,17 +83,17 @@ namespace Bloodshot
 			return FindChecked(Key);
 		}
 
-		NODISCARD FORCEINLINE size_t GetSize() const noexcept
+		NODISCARD FORCEINLINE size_t GetSize() const
 		{
 			return Pairs.GetSize();
 		}
 
-		NODISCARD FORCEINLINE bool IsEmpty() const noexcept
+		NODISCARD FORCEINLINE bool IsEmpty() const
 		{
 			return Pairs.IsEmpty();
 		}
 
-		NODISCARD FORCEINLINE bool IsValidIndex(const size_t Index) const noexcept
+		NODISCARD FORCEINLINE bool IsValidIndex(const size_t Index) const
 		{
 			return Pairs.IsValidIndex(Index);
 		}
@@ -154,6 +143,36 @@ namespace Bloodshot
 			return EmplaceByHash(InKeyHash, std::move(InKey), std::move(InValue));
 		}
 
+		FORCEINLINE ElementType& AddByHashGetPair(const uint64_t InKeyHash, const KeyType& InKey)
+		{
+			return EmplaceByHashGetPair(InKeyHash, InKey);
+		}
+
+		FORCEINLINE ElementType& AddByHashGetPair(const uint64_t InKeyHash, KeyType&& InKey)
+		{
+			return EmplaceByHashGetPair(InKeyHash, std::move(InKey));
+		}
+
+		FORCEINLINE ElementType& AddByHashGetPair(const uint64_t InKeyHash, const KeyType& InKey, const ValueType& InValue)
+		{
+			return EmplaceByHashGetPair(InKeyHash, InKey, InValue);
+		}
+
+		FORCEINLINE ElementType& AddByHashGetPair(const uint64_t InKeyHash, KeyType&& InKey, const ValueType& InValue)
+		{
+			return EmplaceByHashGetPair(InKeyHash, std::move(InKey), InValue);
+		}
+
+		FORCEINLINE ElementType& AddByHashGetPair(const uint64_t InKeyHash, const KeyType& InKey, ValueType&& InValue)
+		{
+			return EmplaceByHashGetPair(InKeyHash, InKey, std::move(InValue));
+		}
+
+		FORCEINLINE ElementType& AddByHashGetPair(const uint64_t InKeyHash, KeyType&& InKey, ValueType&& InValue)
+		{
+			return EmplaceByHashGetPair(InKeyHash, std::move(InKey), std::move(InValue));
+		}
+
 		FORCEINLINE ValueType& Add(const KeyType& InKey, const ValueType& InValue)
 		{
 			return Emplace(InKey, InValue);
@@ -199,6 +218,20 @@ namespace Bloodshot
 		}
 
 		template<typename InitKeyType = KeyType>
+		FORCEINLINE ElementType& EmplaceByHashGetPair(const uint64_t InKeyHash, InitKeyType&& InKey)
+		{
+			const size_t PairIndex = Pairs.EmplaceByHash(InKeyHash, std::forward<InitKeyType>(InKey), ValueType());
+			return Pairs[PairIndex];
+		}
+
+		template<typename InitKeyType = KeyType, typename InitValueType = ValueType>
+		FORCEINLINE ElementType& EmplaceByHashGetPair(const uint64_t InKeyHash, InitKeyType&& InKey, InitValueType&& InValue)
+		{
+			const size_t PairIndex = Pairs.EmplaceByHash(InKeyHash, std::forward<InitKeyType>(InKey), std::forward<InitValueType>(InValue));
+			return Pairs[PairIndex];
+		}
+
+		template<typename InitKeyType = KeyType>
 		FORCEINLINE ValueType& Emplace(InitKeyType&& InKey)
 		{
 			const size_t PairIndex = Pairs.Emplace(std::forward<InitKeyType>(InKey), ValueType());
@@ -210,6 +243,25 @@ namespace Bloodshot
 		{
 			const size_t PairIndex = Pairs.Emplace(std::forward<InitKeyType>(InKey), std::forward<InitValueType>(InValue));
 			return Pairs[PairIndex].Second;
+		}
+
+		template<typename InitKeyType = KeyType>
+		FORCEINLINE ElementType& EmplaceGetPair(InitKeyType&& InKey)
+		{
+			const size_t PairIndex = Pairs.Emplace(std::forward<InitKeyType>(InKey), ValueType());
+			return Pairs[PairIndex];
+		}
+
+		template<typename InitKeyType = KeyType, typename InitValueType = ValueType>
+		FORCEINLINE ElementType& EmplaceGetPair(InitKeyType&& InKey, InitValueType&& InValue)
+		{
+			const size_t PairIndex = Pairs.Emplace(std::forward<InitKeyType>(InKey), std::forward<InitValueType>(InValue));
+			return Pairs[PairIndex];
+		}
+
+		FORCEINLINE void Remove(KeyConstPointerType InKey)
+		{
+			Pairs.Remove(InKey);
 		}
 
 		template<typename ComparableKey>
@@ -254,6 +306,48 @@ namespace Bloodshot
 			return const_cast<TMap*>(this)->FindChecked(Key);
 		}
 
+	private:
+		template<typename InitKeyType>
+		NODISCARD ValueType& FindOrAddImpl(const uint64_t KeyHash, InitKeyType&& Key)
+		{
+			if (ElementType* const Pair = Pairs.FindByHash(KeyHash, Key))
+			{
+				return Pair->Second;
+			}
+			return AddByHash(KeyHash, std::forward<InitKeyType>(Key));
+		}
+
+		template<typename InitKeyType, typename InitValueType>
+		NODISCARD ValueType& FindOrAddImpl(const uint64_t KeyHash, InitKeyType&& Key, InitValueType&& Value)
+		{
+			if (ElementType* const Pair = Pairs.FindByHash(KeyHash, Key))
+			{
+				return Pair->Second;
+			}
+			return AddByHash(KeyHash, std::forward<InitKeyType>(Key), std::forward<InitValueType>(Value));
+		}
+
+		template<typename InitKeyType>
+		NODISCARD ElementType& FindOrAddGetPairImpl(const uint64_t KeyHash, InitKeyType&& Key)
+		{
+			if (ElementType* const Pair = Pairs.FindByHash(KeyHash, Key))
+			{
+				return *Pair;
+			}
+			return AddByHashGetPair(KeyHash, std::forward<InitKeyType>(Key));
+		}
+
+		template<typename InitKeyType, typename InitValueType>
+		NODISCARD ElementType* FindOrAddGetPairImpl(const uint64_t KeyHash, InitKeyType&& Key, InitValueType&& Value)
+		{
+			if (ElementType* const Pair = Pairs.FindByHash(KeyHash, Key))
+			{
+				return *Pair;
+			}
+			return AddByHashGetPair(KeyHash, std::forward<InitKeyType>(Key), std::forward<InitValueType>(Value));
+		}
+
+	public:
 		NODISCARD FORCEINLINE ValueType& FindOrAddByHash(const uint64_t KeyHash, const KeyType& Key)
 		{
 			return FindOrAddImpl(KeyHash, Key);
@@ -274,6 +368,41 @@ namespace Bloodshot
 			return FindOrAddImpl(KeyFuncs::GetKeyHash(Key), std::move(Key));
 		}
 
+		NODISCARD FORCEINLINE ValueType& FindOrAdd(const KeyType& Key, const ValueType& Value)
+		{
+			return FindOrAddImpl(KeyFuncs::GetKeyHash(Key), Key, Value);
+		}
+
+		NODISCARD FORCEINLINE ValueType& FindOrAdd(KeyType&& Key, ValueType&& Value)
+		{
+			return FindOrAddImpl(KeyFuncs::GetKeyHash(Key), std::move(Key), std::move(Value));
+		}
+
+		NODISCARD FORCEINLINE ValueType& FindOrAdd(const KeyType& Key, ValueType&& Value)
+		{
+			return FindOrAddImpl(KeyFuncs::GetKeyHash(Key), Key, std::move(Value));
+		}
+
+		NODISCARD FORCEINLINE ValueType& FindOrAdd(KeyType&& Key, const ValueType& Value)
+		{
+			return FindOrAddImpl(KeyFuncs::GetKeyHash(Key), std::move(Key), Value);
+		}
+
+		NODISCARD FORCEINLINE ElementType& FindOrAddGetPair(const KeyType& Key)
+		{
+			return FindOrAddGetPairImpl(KeyFuncs::GetKeyHash(Key), Key);
+		}
+
+		NODISCARD FORCEINLINE ElementType& FindOrAddGetPair(KeyType&& Key)
+		{
+			return FindOrAddGetPairImpl(KeyFuncs::GetKeyHash(Key), std::move(Key));
+		}
+
+		NODISCARD FORCEINLINE bool Contains(KeyConstPointerType Key) const
+		{
+			return Pairs.Contains(Key);
+		}
+
 		NODISCARD FORCEINLINE TArray<ElementType> ToArray() const
 		{
 			TArray<ElementType> Result;
@@ -286,6 +415,7 @@ namespace Bloodshot
 
 		FORCEINLINE void Shrink()
 		{
+			BS_CHECK(false);
 			//Pairs.Shrink();
 		}
 
@@ -357,7 +487,7 @@ namespace Bloodshot
 				return !(bool)*this;
 			}
 
-			NODISCARD FORCEINLINE size_t GetIndex() const noexcept
+			NODISCARD FORCEINLINE size_t GetIndex() const
 			{
 				return PairIt->GetIndex();
 			}
@@ -428,26 +558,5 @@ namespace Bloodshot
 		NODISCARD FORCEINLINE FRangeForConstIterator begin() const { return FRangeForConstIterator(Pairs.begin()); }
 		NODISCARD FORCEINLINE FRangeForIterator end() { return FRangeForIterator(Pairs.end()); }
 		NODISCARD FORCEINLINE FRangeForConstIterator end() const { return FRangeForConstIterator(Pairs.end()); }
-
-	private:
-		template<typename InitKeyType>
-		NODISCARD ValueType& FindOrAddImpl(const uint64_t KeyHash, InitKeyType&& Key)
-		{
-			if (ElementType* const Pair = Pairs.FindByHash(KeyHash, Key))
-			{
-				return Pair->Second;
-			}
-			return AddByHash(KeyHash, std::forward<InitKeyType>(Key));
-		}
-
-		template<typename InitKeyType, typename InitValueType>
-		NODISCARD ValueType& FindOrAddImpl(const uint64_t KeyHash, InitKeyType&& Key, InitValueType&& Value)
-		{
-			if (ElementType* const Pair = Pairs.FindByHash(KeyHash, Key))
-			{
-				return Pair->Second;
-			}
-			return AddByHash(KeyHash, std::forward<InitKeyType>(Key), std::forward<InitValueType>(Value));
-		}
 	};
 }

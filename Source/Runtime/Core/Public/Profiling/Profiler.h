@@ -18,32 +18,41 @@ namespace Bloodshot
 		struct FFunctionProfile final
 		{
 			const char* Name;
-			bool bMangled;
 			size_t TotalExecutions;
 			std::chrono::milliseconds TotalExecutionDuration;
 			float AverageExecutionDurationMilli;
 		};
 
-		using FFunctionProfileMap = TMap<size_t, FFunctionProfile>;
-
-		FProfiler() = default;
+		FProfiler() {}
 
 		std::ofstream OutputStream;
+
+		using FFunctionProfileMap = TMap<size_t, FFunctionProfile>;
 		FFunctionProfileMap FunctionProfiles;
 
 		bool bSessionStarted = false;
 
-		NODISCARD static FProfiler& GetInstance();
-
-		NODISCARD FORCEINLINE bool IsSessionStarted() const noexcept
+		FORCEINLINE static void StaticConstructor()
 		{
-			return bSessionStarted;
+			BeginSession();
 		}
 
-		void BeginSession();
-		void EndSession();
+		FORCEINLINE static void StaticDestructor()
+		{
+			EndSession();
+		}
 
-		void WriteFunctionProfile(const char* Name, const std::chrono::milliseconds Duration, const bool bMangled);
+		NODISCARD static FProfiler& GetInstance();
+
+		NODISCARD FORCEINLINE static bool IsSessionStarted()
+		{
+			return GetInstance().bSessionStarted;
+		}
+
+		static void BeginSession();
+		static void EndSession();
+
+		static void WriteFunctionProfile(const char* Name, const std::chrono::milliseconds Duration);
 	};
 }
 

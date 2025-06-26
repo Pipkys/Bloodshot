@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Core.h"
+
 #include <filesystem>
 #include <fstream>
 #include <functional>
-#include <string>
 
 namespace Bloodshot::Shared
 {
@@ -18,16 +19,16 @@ namespace Bloodshot::Shared
 	struct FProject final
 	{
 		FProject() {}
-		FProject(std::string_view InDirectory);
+		FProject(FStringView InDirectory);
 		FProject(const std::filesystem::path& InDirectory);
 
-		std::string Name;
-		std::string Directory;
-		std::string ContentDirectory;
-		std::string EditorStartupScene;
-		std::string GameDefaultScene;
+		FString Name;
+		FString Directory;
+		FString ContentDirectory;
+		FString EditorStartupScene;
+		FString GameDefaultScene;
 
-		static FProject LoadFromFile(std::string_view InFilePath);
+		static FProject LoadFromFile(FStringView InFilePath);
 
 		template<typename T>
 			requires std::_Is_any_path<T>
@@ -39,7 +40,7 @@ namespace Bloodshot::Shared
 			return Result;
 		}
 
-		static FProject LoadFromDirectory(std::string_view InDirectory);
+		static FProject LoadFromDirectory(FStringView InDirectory);
 
 		template<typename T>
 			requires std::_Is_any_path<T>
@@ -50,7 +51,7 @@ namespace Bloodshot::Shared
 			return Result;
 		}
 
-		static bool TryLoadFromDirectory(FProject& OutResult, std::string_view InDirectory);
+		static bool TryLoadFromDirectory(FProject& OutResult, FStringView InDirectory);
 
 		template<typename T>
 			requires std::_Is_any_path<T>
@@ -65,12 +66,12 @@ namespace Bloodshot::Shared
 	class FProjectArchive final
 	{
 	public:
-		FProjectArchive(std::string_view InOutputFileName)
+		FProjectArchive(FStringView InOutputFileName)
 			: OutputFileName(InOutputFileName)
 		{
 		}
 
-		FProject Get(const std::string& Name, const std::filesystem::path& Directory);
+		FProject Get(const FString& Name, const std::filesystem::path& Directory);
 		void Add(const FProject& InProject);
 		void Remove(const FProject& InProject);
 		bool Contains(const FProject& InProject);
@@ -78,8 +79,8 @@ namespace Bloodshot::Shared
 
 	private:
 		std::fstream Stream;
-		std::string OutputFileName;
+		FString OutputFileName;
 
-		void ParseRecord(FProject& OutResult, std::string_view InRecord);
+		void ParseRecord(FProject& OutResult, FStringView InRecord);
 	};
 }

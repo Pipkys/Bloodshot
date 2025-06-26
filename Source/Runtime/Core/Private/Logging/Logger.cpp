@@ -1,5 +1,4 @@
 #include "Logging/Logger.h"
-#include "Logging/LoggingMacros.h"
 #include "Misc/AssertionMacros.h"
 
 #include <filesystem>
@@ -12,34 +11,38 @@ namespace Bloodshot
 		return Instance;
 	}
 
+#ifdef BS_LOGGING_ON
 	void FLogger::BeginSession(const ELogLevel InLogLevelFlags,
 		const int InOutputStreamOpenMode,
 		const bool bInAlwaysWriteToFile)
 	{
-		bool& bStarted = bSessionStarted;
+		FLogger& Instance = GetInstance();
+		bool& bStarted = Instance.bSessionStarted;
 		BS_CHECK(!bStarted);
 
-		CurrentLogLevelFlags = InLogLevelFlags;
-		bAlwaysWriteToFile = bInAlwaysWriteToFile;
+		Instance.LogLevelFlags = InLogLevelFlags;
+		Instance.bAlwaysWriteToFile = bInAlwaysWriteToFile;
 
 		if (!std::filesystem::exists("Logs"))
 		{
 			std::filesystem::create_directory("Logs");
 		}
 
-		std::ofstream& Output = OutputStream;
-		Output.open("Logs/Logger.txt", InOutputStreamOpenMode);
+		std::ofstream& OutputStream = Instance.OutputStream;
+		OutputStream.open("Logs/Logger.txt", InOutputStreamOpenMode);
 
-		BS_CHECK(Output.is_open());
-		BS_LOG(Info, "Logging Session started");
+		BS_CHECK(OutputStream.is_open());
+		Log(ELogLevel::Info, "Logging Session started");
 
 		bStarted = true;
 	}
 
 	void FLogger::EndSession()
 	{
-		BS_CHECK(bSessionStarted);
-		BS_LOG(Info, "Logging Session ended");
-		OutputStream.close();
+		FLogger& Instance = GetInstance();
+		BS_CHECK(Instance.bSessionStarted);
+		Log(ELogLevel::Info, "Logging Session ended");
+		Instance.OutputStream.close();
 	}
+#endif
 }

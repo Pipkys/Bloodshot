@@ -13,9 +13,9 @@ namespace Bloodshot
 	public:
 		NODISCARD static FApplication& GetInstance();
 
-		NODISCARD FORCEINLINE bool IsExitRequested() const noexcept
+		NODISCARD FORCEINLINE static bool IsExitRequested()
 		{
-			return bExitRequested;
+			return GetInstance().bExitRequested;
 		}
 
 		NODISCARD static void RequestExit()

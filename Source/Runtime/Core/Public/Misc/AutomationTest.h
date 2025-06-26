@@ -3,9 +3,11 @@
 #ifdef BS_WITH_AUTOMATION_TESTS
 
 #include "Containers/Map.h"
+#include "Containers/String.h"
 #include "Containers/StringView.h"
 #include "Logging/LoggingMacros.h"
 #include "Platform/Platform.h"
+#include "String/Format.h"
 
 namespace Bloodshot
 {
@@ -16,29 +18,32 @@ namespace Bloodshot
 		friend class IAutomationTest;
 
 	public:
-		FORCEINLINE ~FAutomationTestFramework() {}
-
 		NODISCARD static FAutomationTestFramework& GetInstance();
 
-		NODISCARD FORCEINLINE IAutomationTest* GetCurrentTest()
+		NODISCARD FORCEINLINE static IAutomationTest* GetCurrentTest()
 		{
-			return CurrentTest;
+			return GetInstance().CurrentTest;
 		}
 
-		void RunTest(FStringView Name);
-		void RunAllTests();
+		NODISCARD FORCEINLINE static TMap<FStringView, IAutomationTest*>& GetTests()
+		{
+			return GetInstance().AutomationTests;
+		}
+
+		static void RunTest(FStringView Name);
+		static void RunAllTests();
 
 	private:
-		FORCEINLINE FAutomationTestFramework() {}
+		FAutomationTestFramework() {}
 
-		FORCEINLINE void RegisterTest(FStringView InName, IAutomationTest* const InTest)
+		FORCEINLINE static void RegisterTest(FStringView InName, IAutomationTest* const InTest)
 		{
-			AutomationTests.Emplace(InName, InTest);
+			GetInstance().AutomationTests.Emplace(InName, InTest);
 		}
 
-		FORCEINLINE void UnregisterTest(FStringView InName)
+		FORCEINLINE static void UnregisterTest(FStringView InName)
 		{
-			AutomationTests[InName] = nullptr;
+			GetInstance().AutomationTests.Remove(InName);
 		}
 
 		TMap<FStringView, IAutomationTest*> AutomationTests;
@@ -53,21 +58,46 @@ namespace Bloodshot
 		IAutomationTest(FStringView InName)
 			: Name(InName.GetData())
 		{
-			FAutomationTestFramework::GetInstance().RegisterTest(Name, this);
+			FAutomationTestFramework::RegisterTest(Name, this);
 		}
 
 		virtual ~IAutomationTest()
 		{
-			FAutomationTestFramework::GetInstance().UnregisterTest(Name);
+			FAutomationTestFramework::UnregisterTest(Name);
 		}
 
 		FORCEINLINE void AddError(FStringView ConditionText, FStringView ErrorText)
 		{
-			BS_LOG(Error, "{}, {} - {}", Name, ConditionText, ErrorText);
+			FString Formatted = String::Format("{}, {} - {}", Name, ConditionText, ErrorText);
+			BS_LOG(Error, Formatted.GetData());
+			Errors.EmplaceBack(std::move(Formatted));
+		}
+
+		NODISCARD FORCEINLINE float GetDuration() const
+		{
+			return Duration;
+		}
+
+		NODISCARD FORCEINLINE bool IsRunnedOnce() const
+		{
+			return bRunnedOnce;
+		}
+
+		NODISCARD FORCEINLINE size_t GetErrorCount() const
+		{
+			return Errors.GetSize();
+		}
+
+		NODISCARD FORCEINLINE const TArray<FString>& GetErrors() const
+		{
+			return Errors;
 		}
 
 	protected:
 		FStringView Name;
+		float Duration = 0.f;
+		bool bRunnedOnce = false;
+		TArray<FString> Errors;
 
 		virtual void Run() = 0;
 	};
@@ -88,6 +118,6 @@ void Class::Body()
 
 #define TEST_CASE_NAMED(ClassName) IMPLEMENT_AUTOMATION_TEST(ClassName, #ClassName)
 
-#define TEST_ASSERT(Expression) if(!(Expression)) { FAutomationTestFramework::GetInstance().GetCurrentTest()->AddError(#Expression, "Condition failed"); }
+#define TEST_ASSERT(Expression) if(!(Expression)) { FAutomationTestFramework::GetCurrentTest()->AddError(#Expression, "Condition failed"); }
 
 #endif

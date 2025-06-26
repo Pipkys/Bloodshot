@@ -7,8 +7,7 @@ namespace Bloodshot
 	class FEngineState final
 	{
 		friend class Private::Launch::IEngineContext;
-		friend class Private::Launch::FEngineEditorContext;
-		friend class Private::Launch::FEngineGameContext;
+		friend class FEditor;
 
 	public:
 		NODISCARD static FEngineState& GetInstance();
@@ -28,5 +27,15 @@ namespace Bloodshot
 
 		bool bRunning = false;
 		bool bSimulating = false;
+
+		NODISCARD FORCEINLINE static void SetRunning(const bool bInRunning)
+		{
+			GetInstance().bRunning = bInRunning;
+		}
+
+		NODISCARD FORCEINLINE static void SetSimulating(const bool bInSimulating)
+		{
+			GetInstance().bSimulating = bInSimulating;
+		}
 	};
 }

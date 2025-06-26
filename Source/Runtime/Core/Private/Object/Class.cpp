@@ -7,7 +7,7 @@ namespace Bloodshot
 	{
 		for (size_t i = 0; i < BaseClassCount; ++i)
 		{
-			FClass* const BaseClass = BaseClasses + i;
+			FClass* const BaseClass = BaseClasses[i];
 			if (BaseClass->GetName() == InName)
 			{
 				return BaseClass;

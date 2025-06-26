@@ -90,3 +90,5 @@ namespace Bloodshot::Private::Launch
 
 #define THIRD_PARTY_INCLUDES_START
 #define THIRD_PARTY_INCLUDES_END
+
+#define UTF8TEXT(String) reinterpret_cast<const char*>(u8##String##)

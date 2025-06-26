@@ -1,12 +1,12 @@
 #ifdef BS_PROFILING_ON
 
-#include "Profiling/Profiler.h"
 #include "Containers/Pair.h"
 #include "Containers/String.h"
 #include "Containers/StringView.h"
 #include "Misc/AssertionMacros.h"
 #include "Platform/Platform.h"
-#include "String/Format.h"
+#include "Profiling/Profiler.h"
+#include "String/LowLevelFormat.h"
 #include "String/LowLevelString.h"
 #include "String/LowLevelStringAllocator.h"
 #include "String/LowLevelStringBuilder.h"
@@ -32,73 +32,21 @@ namespace Bloodshot
 		};
 	}
 
-	FORCEINLINE static FString DemangleFunctionName(FStringView MangledName)
-	{
-#ifdef BS_MSVC
-		size_t NestedTemplates = 0;
-		size_t ParamsBracketIndex = 0;
-
-		for (size_t i = 0; i < MangledName.GetSize(); ++i)
-		{
-			const char CurrentChar = MangledName[i];
-
-			if (CurrentChar == '<')
-			{
-				++NestedTemplates;
-			}
-			else if (CurrentChar == '>')
-			{
-				--NestedTemplates;
-			}
-			else if (CurrentChar == '(' && !NestedTemplates)
-			{
-				ParamsBracketIndex = i;
-				break;
-			}
-		}
-
-		size_t PrettyFunctionNameBeginIndex = 0;
-
-		for (size_t i = ParamsBracketIndex - 1; i > 0; --i)
-		{
-			const char CurrentChar = MangledName[i];
-
-			if (CurrentChar == '<')
-			{
-				++NestedTemplates;
-			}
-			else if (CurrentChar == '>')
-			{
-				--NestedTemplates;
-			}
-			else if (!isalnum(CurrentChar) && CurrentChar != ':' && !NestedTemplates)
-			{
-				PrettyFunctionNameBeginIndex = i + 1;
-				break;
-			}
-		}
-
-		FStringView FunctionName = MangledName.SubStr(PrettyFunctionNameBeginIndex, ParamsBracketIndex - PrettyFunctionNameBeginIndex);
-		if (FunctionName.IsEmpty())
-			return FString(MangledName);
-		return FString(FunctionName);
-#else
-		return FString(MangledName);
-#endif
-	}
-
 	FProfiler& FProfiler::GetInstance()
 	{
 		static FProfiler Instance;
 		return Instance;
 	}
 
-	void FProfiler::WriteFunctionProfile(const char* Name, const std::chrono::milliseconds Duration, const bool bMangled)
+	void FProfiler::WriteFunctionProfile(const char* Name, const std::chrono::milliseconds Duration)
 	{
-		if (!IsSessionStarted()) return;
+		if (!IsSessionStarted())
+		{
+			return;
+		}
 
 		static size_t FunctionUniqueID = 0;
-
+		FFunctionProfileMap& FunctionProfiles = GetInstance().FunctionProfiles;
 		for (TPair<size_t, FFunctionProfile>& ProfilePair : FunctionProfiles)
 		{
 			FFunctionProfile& Profile = ProfilePair.Second;
@@ -113,21 +61,22 @@ namespace Bloodshot
 
 		FFunctionProfile Profile;
 		Profile.Name = Name;
-		Profile.bMangled = bMangled;
 		Profile.TotalExecutions = 1;
 		Profile.TotalExecutionDuration = Duration;
-
 		FunctionProfiles.Emplace(++FunctionUniqueID, std::move(Profile));
 	}
 
 	void FProfiler::BeginSession()
 	{
+		FProfiler& Instance = GetInstance();
+		bool& bSessionStarted = Instance.bSessionStarted;
 		BS_CHECK(!bSessionStarted);
 		if (!std::filesystem::exists("Logs"))
 		{
 			std::filesystem::create_directory("Logs");
 		}
 
+		std::ofstream& OutputStream = Instance.OutputStream;
 		OutputStream.open("Logs/Profiler.txt");
 		BS_CHECK(OutputStream.is_open());
 		bSessionStarted = true;
@@ -138,7 +87,11 @@ namespace Bloodshot
 		using std::chrono::milliseconds;
 		using std::chrono::microseconds;
 
-		BS_CHECK(bSessionStarted);
+		FProfiler& Instance = GetInstance();
+		std::ofstream& OutputStream = Instance.OutputStream;
+		FFunctionProfileMap& FunctionProfiles = Instance.FunctionProfiles;
+
+		BS_CHECK(Instance.bSessionStarted);
 		OutputStream << "[-] - Not sorted:\n";
 
 		for (TPair<size_t, FFunctionProfile>& ProfilePair : FunctionProfiles)
@@ -153,12 +106,9 @@ namespace Bloodshot
 			const float AverageExecutionDurationMicro = (float)TotalExecutionDurationMicro.count() / (float)TotalExecutions;
 			Profile.AverageExecutionDurationMilli = AverageExecutionDurationMilli;
 
-			const FString& DemangledFunctionName = Profile.bMangled ? DemangleFunctionName(Profile.Name) : FString(Profile.Name);
-
-			// BSTODO: Paddings
 			Private::String::FLowLevelString Result = Private::String::LLFormat("\t[{}] - [{}]: calls: {}; total: {}; average: {}ms / {}us\n\n",
 				ProfileUniqueID,
-				DemangledFunctionName,
+				Profile.Name,
 				TotalExecutions,
 				TotalExecutionDurationMilli,
 				AverageExecutionDurationMilli,
@@ -170,14 +120,22 @@ namespace Bloodshot
 		TArray<TPair<size_t, FFunctionProfile>> SortedByMs = FunctionProfiles.ToArray();
 		// BSTODO: Implement Sort() ?
 		//SortedByMs.Sort();
+		std::vector<TPair<size_t, FFunctionProfile>> SortedByMsReal;
+		for (TPair<size_t, FFunctionProfile>& Pair : SortedByMs)
+		{
+			SortedByMsReal.push_back(Pair);
+		}
+		//std::sort(SortedByMsReal.begin(), SortedByMsReal.end(), [](const TPair<size_t, FFunctionProfile>& Left, const TPair<size_t, FFunctionProfile>& Right)
+		//{
+		//	return Left.Second.AverageExecutionDurationMilli >= Right.Second.AverageExecutionDurationMilli;
+		//});
 
 		OutputStream << "[-] - Sorted by average in ms:\n";
 
-		for (const TPair<size_t, FFunctionProfile>& ProfilePair : SortedByMs)
+		for (const TPair<size_t, FFunctionProfile>& ProfilePair : SortedByMsReal)
 		{
 			const size_t ProfileUniqueID = ProfilePair.First;
 			const FFunctionProfile& Profile = ProfilePair.Second;
-			const FString& DemangledFunctionName = Profile.bMangled ? DemangleFunctionName(Profile.Name) : FString(Profile.Name);
 			const size_t TotalExecutions = Profile.TotalExecutions;
 			const milliseconds TotalExecutionDurationMilli = Profile.TotalExecutionDuration;
 			const float AverageExecutionDurationMilli = Profile.AverageExecutionDurationMilli;
@@ -185,7 +143,7 @@ namespace Bloodshot
 			// BSTODO: Paddings
 			Private::String::FLowLevelString Result = Private::String::LLFormat("\t[{}] - [{}]: calls: {}; total: {}; average: {}ms / {}us\n\n",
 				ProfileUniqueID,
-				DemangledFunctionName,
+				Profile.Name,
 				TotalExecutions,
 				TotalExecutionDurationMilli,
 				AverageExecutionDurationMilli,
@@ -194,7 +152,7 @@ namespace Bloodshot
 			Result.Release();
 		}
 
-		FunctionProfiles.Clear();
+		FunctionProfiles.Dispose();
 		OutputStream.close();
 	}
 }

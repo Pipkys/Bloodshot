@@ -1,60 +1,61 @@
 #include "Project.h"
-#include "ParseTokens.h"
-
-#include <cassert>
-#include <format>
-
-namespace
-{
-	static void ReadLine(std::ifstream& InInputStream, std::string& InLine, const std::function<void(std::string&)>& InVisitor)
-	{
-		std::getline(InInputStream, InLine);
-		InVisitor(InLine);
-	}
-
-	static void ReadLine(std::fstream& InInputStream, std::string& InLine, const std::function<void(std::string&)>& InVisitor)
-	{
-		std::getline(InInputStream, InLine);
-		InVisitor(InLine);
-	}
-
-	static void ReadContent(std::ifstream& InInputStream, std::string& InLine, const std::function<void(std::string&)>& InVisitor)
-	{
-		while (std::getline(InInputStream, InLine))
-		{
-			InVisitor(InLine);
-		}
-	}
-
-	static void ReadContent(std::fstream& InInputStream, std::string& InLine, const std::function<void(std::string&)>& InVisitor)
-	{
-		while (std::getline(InInputStream, InLine))
-		{
-			InVisitor(InLine);
-		}
-	}
-}
 
 namespace Bloodshot::Shared
 {
 	namespace Private::Project
 	{
+		static void ReadLine(std::ifstream& InInputStream, FString& InLine, const std::function<void(FString&)>& InVisitor)
+		{
+			std::string Temp;
+			std::getline(InInputStream, Temp);
+			InLine = Temp.c_str();
+			InVisitor(InLine);
+		}
+
+		static void ReadLine(std::fstream& InInputStream, FString& InLine, const std::function<void(FString&)>& InVisitor)
+		{
+			std::string Temp;
+			std::getline(InInputStream, Temp);
+			InLine = Temp.c_str();
+			InVisitor(InLine);
+		}
+
+		static void ReadContent(std::ifstream& InInputStream, FString& InLine, const std::function<void(FString&)>& InVisitor)
+		{
+			std::string Temp;
+			while (std::getline(InInputStream, Temp))
+			{
+				InLine = Temp.c_str();
+				InVisitor(InLine);
+			}
+		}
+
+		static void ReadContent(std::fstream& InInputStream, FString& InLine, const std::function<void(FString&)>& InVisitor)
+		{
+			std::string Temp;
+			while (std::getline(InInputStream, Temp))
+			{
+				InLine = Temp.c_str();
+				InVisitor(InLine);
+			}
+		}
+
 		void LoadFromFileImpl(Bloodshot::Shared::FProject& OutResult, std::ifstream& InInputStream)
 		{
 			assert(InInputStream.is_open() && "FProject::LoadFromFile: Failed to open project file for reading");
-			std::string Buffer;
-			std::string* const Content = (std::string*)&OutResult;
-			for (size_t i = 0; i < sizeof(Bloodshot::Shared::FProject) / sizeof(std::string); ++i)
+			FString Buffer;
+			FString* const Content = (FString*)&OutResult;
+			for (size_t i = 0; i < sizeof(Bloodshot::Shared::FProject) / sizeof(FString); ++i)
 			{
-				std::string& ToWrite = Content[i];
-				ReadLine(InInputStream, Buffer, [&ToWrite](std::string& InLine)
+				FString& ToWrite = Content[i];
+				ReadLine(InInputStream, Buffer, [&ToWrite](FString& InLine)
 				{
 					bool bNeedWrite = false;
-					Bloodshot::Shared::ParseTokens(InLine, " ", [&ToWrite, &bNeedWrite](std::string_view InToken)
+					String::ParseTokens(InLine, " ", [&ToWrite, &bNeedWrite](FStringView InToken)
 					{
 						if (bNeedWrite)
 						{
-							ToWrite = InToken.substr(1, InToken.size() - 2);
+							ToWrite = InToken.SubStr(1, InToken.GetSize() - 2);
 							return;
 						}
 						bNeedWrite = true;
@@ -81,7 +82,7 @@ namespace Bloodshot::Shared
 		}
 	}
 
-	FProject::FProject(std::string_view InDirectory)
+	FProject::FProject(FStringView InDirectory)
 	{
 		*this = LoadFromDirectory(InDirectory);
 	}
@@ -91,47 +92,47 @@ namespace Bloodshot::Shared
 		*this = LoadFromDirectory(InDirectory);
 	}
 
-	FProject FProject::LoadFromFile(std::string_view InFilePath)
+	FProject FProject::LoadFromFile(FStringView InFilePath)
 	{
 		FProject Result;
-		std::ifstream InputStream(InFilePath.data());
+		std::ifstream InputStream(InFilePath.GetData());
 		Private::Project::LoadFromFileImpl(Result, InputStream);
 		return Result;
 	}
 
-	FProject FProject::LoadFromDirectory(std::string_view InDirectory)
+	FProject FProject::LoadFromDirectory(FStringView InDirectory)
 	{
 		FProject Result;
-		Private::Project::LoadFromDirectoryImpl(Result, std::filesystem::directory_iterator(InDirectory));
+		Private::Project::LoadFromDirectoryImpl(Result, std::filesystem::directory_iterator(InDirectory.GetData()));
 		return Result;
 	}
 
-	bool FProject::TryLoadFromDirectory(FProject& OutResult, std::string_view InDirectory)
+	bool FProject::TryLoadFromDirectory(FProject& OutResult, FStringView InDirectory)
 	{
-		return Private::Project::LoadFromDirectoryImpl(OutResult, std::filesystem::directory_iterator(InDirectory));
+		return Private::Project::LoadFromDirectoryImpl(OutResult, std::filesystem::directory_iterator(InDirectory.GetData()));
 	}
 
 	void FProject::SaveToFile(const std::filesystem::path& InFilePath)
 	{
 		std::ofstream OutputStream(InFilePath);
-		assert(OutputStream.is_open() && "FProject::SaveToFile: Failed to open output file for saving");
-		OutputStream << std::format("Name: \"{}\"\nDirectory: \"{}\"\nContentDirectory: \"{}\"\nEditorStartupScene: \"{}\"\nGameDefaultScene: \"{}\"\n",
+		BS_ASSERT(OutputStream.is_open(), "FProject::SaveToFile: Failed to open output file for saving");
+		OutputStream << String::Format("Name: \"{}\"\nDirectory: \"{}\"\nContentDirectory: \"{}\"\nEditorStartupScene: \"{}\"\nGameDefaultScene: \"{}\"\n",
 			Name,
 			Directory,
 			ContentDirectory,
 			EditorStartupScene,
-			GameDefaultScene);
+			GameDefaultScene).GetData();
 	}
 
-	FProject FProjectArchive::Get(const std::string& InName, const std::filesystem::path& InDirectory)
+	FProject FProjectArchive::Get(const FString& InName, const std::filesystem::path& InDirectory)
 	{
-		Stream.open(OutputFileName, std::ios_base::in);
-		const std::string& InDirStr = InDirectory.string();
+		Stream.open(OutputFileName.GetData(), std::ios_base::in);
+		const FString& InDirStr = InDirectory.string().c_str();
 		FProject Result;
-		std::string Buffer;
-		ReadContent(Stream, Buffer, [this, &InName, &InDirStr, &Result](std::string& InRecord)
+		FString Buffer;
+		Private::Project::ReadContent(Stream, Buffer, [this, &InName, &InDirStr, &Result](FString& InRecord)
 		{
-			if (InRecord.contains(InName) && InRecord.contains(InDirStr))
+			if (InRecord.Contains(InName) && InRecord.Contains(InDirStr))
 			{
 				ParseRecord(Result, InRecord);
 				return;
@@ -143,41 +144,45 @@ namespace Bloodshot::Shared
 
 	void FProjectArchive::Add(const FProject& InProject)
 	{
-		Stream.open(OutputFileName, std::ios_base::out | std::ios_base::app);
-		Stream << std::format("={}?={}?={}?={}?={}\n",
+		Stream.open(OutputFileName.GetData(), std::ios_base::out | std::ios_base::app);
+		Stream << String::Format("={}?={}?={}?={}?={}\n",
 			InProject.Name,
 			InProject.Directory,
 			InProject.ContentDirectory,
 			InProject.EditorStartupScene,
-			InProject.GameDefaultScene);
+			InProject.GameDefaultScene).GetData();
 		Stream.close();
 	}
 
 	void FProjectArchive::Remove(const FProject& InProject)
 	{
-		Stream.open(OutputFileName, std::ios_base::in);
-		std::string Content;
-		std::string Record;
-		while (std::getline(Stream, Record))
+		Stream.open(OutputFileName.GetData(), std::ios_base::in);
+		std::string Temp;
+		FString Content;
+		FString Record;
+		while (std::getline(Stream, Temp))
 		{
-			if (!Record.contains(InProject.Name) || !Record.contains(InProject.Directory))
+			Record = Temp.c_str();
+			if (!Record.Contains(InProject.Name) || !Record.Contains(InProject.Directory))
 			{
 				Content += Record;
 			}
 		}
 		Stream.close();
-		Stream.open(OutputFileName, std::ios_base::out | std::ios_base::trunc);
-		Stream << Content;
+		Stream.open(OutputFileName.GetData(), std::ios_base::out | std::ios_base::trunc);
+		Stream << Content.GetData();
 		Stream.close();
 	}
 
 	bool FProjectArchive::Contains(const FProject& InProject)
 	{
-		Stream.open(OutputFileName, std::ios_base::in);
-		std::string Record;
-		while (std::getline(Stream, Record))
+		Stream.open(OutputFileName.GetData(), std::ios_base::in);
+		std::string Temp;
+		FString Record;
+		while (std::getline(Stream, Temp))
 		{
-			if (Record.contains(InProject.Name) && Record.contains(InProject.Directory))
+			Record = Temp.c_str();
+			if (Record.Contains(InProject.Name) && Record.Contains(InProject.Directory))
 			{
 				Stream.close();
 				return true;
@@ -189,10 +194,12 @@ namespace Bloodshot::Shared
 
 	void FProjectArchive::ForEach(const std::function<void(FProject&)>& InFunc)
 	{
-		Stream.open(OutputFileName, std::ios_base::in);
-		std::string Record;
-		while (std::getline(Stream, Record))
+		Stream.open(OutputFileName.GetData(), std::ios_base::in);
+		std::string Temp;
+		FString Record;
+		while (std::getline(Stream, Temp))
 		{
+			Record = Temp.c_str();
 			FProject Project;
 			ParseRecord(Project, Record);
 			InFunc(Project);
@@ -200,13 +207,13 @@ namespace Bloodshot::Shared
 		Stream.close();
 	}
 
-	void FProjectArchive::ParseRecord(FProject& OutResult, std::string_view InRecord)
+	void FProjectArchive::ParseRecord(FProject& OutResult, FStringView InRecord)
 	{
-		std::string* Content = (std::string*)&OutResult;
-		ParseTokens(InRecord, "?", [&Content](std::string_view InToken)
+		FString* Content = (FString*)&OutResult;
+		String::ParseTokens(InRecord, "?", [&Content](FStringView InToken)
 		{
-			std::string_view CuttedValue = InToken.substr(1);
-			*(Content++) = std::string(CuttedValue.data(), CuttedValue.size());
+			FStringView CuttedValue = InToken.SubStr(1);
+			*(Content++) = FString(CuttedValue.GetData(), CuttedValue.GetSize());
 		});
 	}
 }

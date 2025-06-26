@@ -1,93 +1,90 @@
-#include "OpenGL/OpenGLFrameBuffer.h"
+#include "FrameBuffer.h"
 #include "OpenGL/OpenGLHeader.h"
 
 namespace Bloodshot
 {
-	namespace Private
+	namespace Private::OpenGL::FrameBuffer
 	{
-		static GLenum GetTextureTarget(const bool bMultisampled)
+		NODISCARD FORCEINLINE static GLenum GetTextureTarget(const bool bMultisampled)
 		{
 			return bMultisampled ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 		}
-
-		static void CreateTextures(const bool bMultisampled, uint32_t* OutTextures, const uint32_t Count)
+		
+		FORCEINLINE static void CreateTextures(const bool bMultisampled, uint32_t* const OutTextures, const size_t Count)
 		{
-			glCreateTextures(GetTextureTarget(bMultisampled), Count, OutTextures);
+			glCreateTextures(GetTextureTarget(bMultisampled), (GLsizei)Count, OutTextures);
 		}
 
-		static void BindTexture(const bool bMultisampled, uint32_t TextureID)
-		{
-			glBindTexture(GetTextureTarget(bMultisampled), TextureID);
-		}
-
-		static void AttachColorTexture(const uint32_t TextureID,
-			const uint32_t SampleCount,
+		FORCEINLINE static void AttachColorTexture(const uint32_t FrameBufferID,
+			const uint32_t TextureID,
+			const size_t SampleCount,
 			const GLenum InternalFormat,
 			const GLenum Format,
 			const uint32_t Width,
 			const uint32_t Height,
-			const uint32_t Index)
+			const size_t Index)
 		{
 			const bool bMultisampled = SampleCount > 1;
 
 			if (bMultisampled)
 			{
-				glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, SampleCount, InternalFormat, Width, Height, GL_FALSE);
+				glTextureImage2DMultisampleNV(TextureID, GL_TEXTURE_2D_MULTISAMPLE, (GLsizei)SampleCount, InternalFormat, Width, Height, GL_FALSE);
 			}
 			else
 			{
-				glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, Width, Height, 0, Format, GL_UNSIGNED_BYTE, nullptr);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glTextureStorage2D(TextureID, 1, InternalFormat, Width, Height);
+				glTextureParameteri(TextureID, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(TextureID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(TextureID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(TextureID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTextureParameteri(TextureID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			}
 
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + Index, GetTextureTarget(bMultisampled), TextureID, 0);
+			glNamedFramebufferTexture(FrameBufferID, GL_COLOR_ATTACHMENT0 + (GLenum)Index, TextureID, 0);
 		}
 
-		static void AttachDepthTexture(const uint32_t TextureID,
-			const uint32_t SampleCount,
+		FORCEINLINE static void AttachDepthTexture(const uint32_t FrameBufferID, 
+			const uint32_t TextureID,
+			const size_t SampleCount,
 			const GLenum Format,
 			const GLenum AttachmentType,
 			const uint32_t Width,
 			const uint32_t Height)
 		{
 			const bool bMultisampled = SampleCount > 1;
-
+		
 			if (bMultisampled)
 			{
-				glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, SampleCount, Format, Width, Height, GL_FALSE);
+				glTextureImage2DMultisampleNV(TextureID, GL_TEXTURE_2D_MULTISAMPLE, (GLsizei)SampleCount, Format, Width, Height, GL_FALSE);
 			}
 			else
 			{
-				glTexStorage2D(GL_TEXTURE_2D, 1, Format, Width, Height);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glTextureStorage2D(TextureID, 1, Format, Width, Height);
+				glTextureParameteri(TextureID, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(TextureID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(TextureID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(TextureID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTextureParameteri(TextureID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			}
-
-			glFramebufferTexture2D(GL_FRAMEBUFFER, AttachmentType, GetTextureTarget(bMultisampled), TextureID, 0);
+		
+			glNamedFramebufferTexture(FrameBufferID, AttachmentType, TextureID, 0);
 		}
 
-		static GLenum FrameBufferTextureFormatToOpenGLTextureFormat(const EFrameBufferTextureFormat Format)
+		NODISCARD FORCEINLINE static GLenum FrameBufferTextureFormatToOpenGLTextureFormat(const EFrameBufferTextureFormat Format)
 		{
 			switch (Format)
 			{
-				case Bloodshot::EFrameBufferTextureFormat::RGBA8:return GL_RGBA8;
-				case Bloodshot::EFrameBufferTextureFormat::RED_INTEGER: return GL_RED_INTEGER;
+				case EFrameBufferTextureFormat::RGBA8: return GL_RGBA8;
+				case EFrameBufferTextureFormat::RED_INTEGER: return GL_RED_INTEGER;
 			}
 
-			BS_ASSERT(false, "FrameBufferTextureFormatToOpenGLTextureFormat: Unknown format passed, or current format cannot be converted to OpenGLTextureFormat");
+			BS_ASSERT(false, "FrameBufferTextureFormatToOpenGLTextureFormat: Unknown format passed, or current format cannot be converted to OpenGL texture format");
 			return 0;
 		}
 	}
 
-	FOpenGLFrameBuffer::FOpenGLFrameBuffer(const FFrameBufferSettings& Settings)
-		: IFrameBuffer(Settings)
+	FFrameBuffer::FFrameBuffer(const FFrameBufferSettings& InSettings)
+		: Settings(InSettings)
 	{
 		for (const EFrameBufferTextureFormat Attachment : Settings.Attachments)
 		{
@@ -101,119 +98,147 @@ namespace Bloodshot
 			}
 		}
 
-		Invalidate();
+		Recreate();
 	}
 
-	FOpenGLFrameBuffer::~FOpenGLFrameBuffer()
+	FFrameBuffer::~FFrameBuffer()
 	{
 		glDeleteFramebuffers(1, &UniqueID);
-		glDeleteTextures((GLsizei)ColorAttachmentIndices.GetSize(), ColorAttachmentIndices.GetData());
+		glDeleteTextures((GLsizei)ColorAttachmentIDs.GetSize(), ColorAttachmentIDs.GetData());
 		glDeleteTextures(1, &DepthAttachmentIndex);
 	}
 
-	void FOpenGLFrameBuffer::Bind() const
+	void FFrameBuffer::Bind() const
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, UniqueID);
 		glViewport(0, 0, Settings.Width, Settings.Height);
 	}
 
-	void FOpenGLFrameBuffer::Unbind() const
+	void FFrameBuffer::Unbind() const
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	void FOpenGLFrameBuffer::Resize(const uint32_t Width, const uint32_t Height)
+	void FFrameBuffer::Resize(const uint32_t InWidth, const uint32_t InHeight)
 	{
-		if (Width == 0 || Height == 0 || Width > MaxSize || Height > MaxSize)
+		if (InWidth == 0 || InHeight == 0 || InWidth > MaxSize || InHeight > MaxSize)
 		{
-			BS_LOG(Warning, "FOpenGLFrameBuffer::Resize: Trying to resize FrameBuffer to {}, {}", Width, Height);
+			BS_LOG(Warning, "FFrameBuffer::Resize: Trying to resize FrameBuffer to {}, {}: min size - (1, 1) max size - ({}, {})", 
+				InWidth, 
+				InHeight, 
+				MaxSize,
+				MaxSize);
 			return;
 		}
 
-		Settings.Width = Width;
-		Settings.Height = Height;
+		Settings.Width = InWidth;
+		Settings.Height = InHeight;
 
-		Invalidate();
+		Recreate();
 	}
 
-	int FOpenGLFrameBuffer::ReadPixel(const uint32_t AttachmentIndex, const uint32_t X, const uint32_t Y)
+	void FFrameBuffer::ClearAttachment(const EFrameBufferTextureFormat Attachment, const glm::vec4& Color)
 	{
-		BS_ASSERT(AttachmentIndex < ColorAttachmentIndices.GetSize(),
-			"FOpenGLFrameBuffer::ReadPixel: AttachmentIndex was out of range of ColorAttachmentIndices");
+		const size_t AttachmentIndex = ColorAttachments.Find(Attachment);
+		BS_ASSERT(ColorAttachmentIDs.IsValidIndex(AttachmentIndex),
+			"FFrameBuffer::ClearAttachment: AttachmentIndex was out of range of color attachments");
 
-		glReadBuffer(GL_COLOR_ATTACHMENT0 + AttachmentIndex);
-
-		int PixelData;
-
-		glReadPixels(X, Y, 1, 1, GL_RED_INTEGER, GL_INT, &PixelData);
-
-		return PixelData;
-	}
-
-	void FOpenGLFrameBuffer::ClearAttachment(const uint32_t AttachmentIndex, const uint32_t Value)
-	{
-		BS_ASSERT(AttachmentIndex < ColorAttachmentIndices.GetSize(),
-			"FOpenGLFrameBuffer::ClearAttachment: AttachmentIndex was out of range of ColorAttachmentIndices");
-
-		EFrameBufferTextureFormat Attachment = ColorAttachments[AttachmentIndex];
-
-		glClearTexImage(ColorAttachmentIndices[AttachmentIndex],
+		glClearTexImage(ColorAttachmentIDs[AttachmentIndex],
 			0,
-			Private::FrameBufferTextureFormatToOpenGLTextureFormat(Attachment),
+			Private::OpenGL::FrameBuffer::FrameBufferTextureFormatToOpenGLTextureFormat(Attachment),
+			GL_FLOAT_VEC4,
+			&Color);
+	}
+
+	void FFrameBuffer::ClearAttachment(const EFrameBufferTextureFormat Attachment, const uint32_t Value)
+	{
+		const size_t AttachmentIndex = ColorAttachments.Find(Attachment);
+		BS_ASSERT(ColorAttachmentIDs.IsValidIndex(AttachmentIndex),
+			"FFrameBuffer::ClearAttachment: AttachmentIndex was out of range of color attachments");
+
+		glClearTexImage(ColorAttachmentIDs[AttachmentIndex],
+			0,
+			Private::OpenGL::FrameBuffer::FrameBufferTextureFormatToOpenGLTextureFormat(Attachment),
 			GL_INT,
 			&Value);
 	}
 
-	void FOpenGLFrameBuffer::Invalidate()
+	void FFrameBuffer::ClearAttachment(const size_t AttachmentIndex, const glm::vec4& Color)
+	{
+		BS_ASSERT(ColorAttachmentIDs.IsValidIndex(AttachmentIndex),
+			"FFrameBuffer::ClearAttachment: AttachmentIndex was out of range of color attachments");
+	
+		EFrameBufferTextureFormat Attachment = ColorAttachments[AttachmentIndex];
+		glClearTexImage(ColorAttachmentIDs[AttachmentIndex],
+			0,
+			Private::OpenGL::FrameBuffer::FrameBufferTextureFormatToOpenGLTextureFormat(Attachment),
+			GL_FLOAT_VEC4,
+			&Color);
+	}
+
+	void FFrameBuffer::ClearAttachment(const size_t AttachmentIndex, const uint32_t Value)
+	{
+		BS_ASSERT(ColorAttachmentIDs.IsValidIndex(AttachmentIndex),
+			"FFrameBuffer::ClearAttachment: AttachmentIndex was out of range of color attachments");
+
+		EFrameBufferTextureFormat Attachment = ColorAttachments[AttachmentIndex];
+		glClearTexImage(ColorAttachmentIDs[AttachmentIndex],
+			0,
+			Private::OpenGL::FrameBuffer::FrameBufferTextureFormatToOpenGLTextureFormat(Attachment),
+			GL_INT,
+			&Value);
+	}
+
+	void FFrameBuffer::Recreate()
 	{
 		if (UniqueID)
 		{
 			glDeleteFramebuffers(1, &UniqueID);
-			glDeleteTextures((GLsizei)ColorAttachmentIndices.GetSize(), ColorAttachmentIndices.GetData());
+			glDeleteTextures((GLsizei)ColorAttachmentIDs.GetSize(), ColorAttachmentIDs.GetData());
 			glDeleteTextures(1, &DepthAttachmentIndex);
-
-			ColorAttachmentIndices.Clear();
+			ColorAttachmentIDs.Clear();
 			DepthAttachmentIndex = 0;
 		}
 
 		glCreateFramebuffers(1, &UniqueID);
-		glBindFramebuffer(GL_FRAMEBUFFER, UniqueID);
 
 		const bool bMultisampled = Settings.Samples > 1;
+		const size_t ColorAttachmentCount = ColorAttachments.GetSize();
 
-		const size_t ColorAttachmentsSize = ColorAttachments.GetSize();
-
-		if (ColorAttachmentsSize)
+		if (ColorAttachmentCount)
 		{
-			ColorAttachmentIndices.Resize(ColorAttachmentsSize);
-			Private::CreateTextures(bMultisampled, ColorAttachmentIndices.GetData(), (uint32_t)ColorAttachmentsSize);
+			ColorAttachmentIDs.Resize(ColorAttachmentCount);
+			Private::OpenGL::FrameBuffer::CreateTextures(bMultisampled, 
+				ColorAttachmentIDs.GetData(), 
+				ColorAttachmentCount);
 
-			for (size_t i = 0; i < ColorAttachmentsSize; ++i)
+			for (size_t i = 0; i < ColorAttachmentCount; ++i)
 			{
-				Private::BindTexture(bMultisampled, ColorAttachmentIndices[i]);
 				switch (ColorAttachments[i])
 				{
 					case EFrameBufferTextureFormat::RGBA8:
 					{
-						Private::AttachColorTexture(ColorAttachmentIndices[i],
+						Private::OpenGL::FrameBuffer::AttachColorTexture(UniqueID,
+							ColorAttachmentIDs[i],
 							Settings.Samples,
 							GL_RGBA8,
 							GL_RGBA,
 							Settings.Width,
 							Settings.Height,
-							(uint32_t)i);
+							i);
 
 						break;
 					}
 					case EFrameBufferTextureFormat::RED_INTEGER:
 					{
-						Private::AttachColorTexture(ColorAttachmentIndices[i],
+						Private::OpenGL::FrameBuffer::AttachColorTexture(UniqueID, 
+							ColorAttachmentIDs[i],
 							Settings.Samples,
 							GL_R32I,
 							GL_RED_INTEGER,
 							Settings.Width,
 							Settings.Height,
-							(uint32_t)i);
+							i);
 
 						break;
 					}
@@ -223,14 +248,14 @@ namespace Bloodshot
 
 		if (DepthAttachment != EFrameBufferTextureFormat::None)
 		{
-			Private::CreateTextures(bMultisampled, &DepthAttachmentIndex, 1);
-			Private::BindTexture(bMultisampled, DepthAttachmentIndex);
+			Private::OpenGL::FrameBuffer::CreateTextures(bMultisampled, &DepthAttachmentIndex, 1);
 
 			switch (DepthAttachment)
 			{
 				case EFrameBufferTextureFormat::DEPTH24_STENCIL8:
 				{
-					Private::AttachDepthTexture(DepthAttachmentIndex,
+					Private::OpenGL::FrameBuffer::AttachDepthTexture(UniqueID,
+						DepthAttachmentIndex,
 						Settings.Samples,
 						GL_DEPTH24_STENCIL8,
 						GL_DEPTH_ATTACHMENT,
@@ -242,13 +267,11 @@ namespace Bloodshot
 			}
 		}
 
-		const size_t AttachmentCount = ColorAttachmentIndices.GetSize();
-
+		const size_t AttachmentCount = ColorAttachmentIDs.GetSize();
 		if (AttachmentCount > 1)
 		{
-			BS_ASSERT(AttachmentCount <= 4, "FOpenGLFrameBuffer::Invalidate: Too many color attachments");
-
-			GLenum Buffers[4] =
+			BS_ASSERT(AttachmentCount <= 4, "FFrameBuffer::Recreate: Too many color attachments, only 4 supported");
+			constexpr GLenum Buffers[4] =
 			{
 				GL_COLOR_ATTACHMENT0,
 				GL_COLOR_ATTACHMENT1,
@@ -256,16 +279,14 @@ namespace Bloodshot
 				GL_COLOR_ATTACHMENT3,
 			};
 
-			glDrawBuffers((GLsizei)AttachmentCount, Buffers);
+			glNamedFramebufferDrawBuffers(UniqueID, 4, Buffers);
 		}
-		else if (ColorAttachmentIndices.IsEmpty())
+		else if (ColorAttachmentIDs.IsEmpty())
 		{
-			glDrawBuffer(GL_NONE);
+			glNamedFramebufferDrawBuffer(UniqueID, 0);
 		}
 
-		BS_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
-			"FOpenGLFrameBuffer::Invalidate: FrameBuffer is incomplete");
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		BS_ASSERT(glCheckNamedFramebufferStatus(UniqueID, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
+			"FFrameBuffer::Recreate: FrameBuffer is incomplete");
 	}
 }

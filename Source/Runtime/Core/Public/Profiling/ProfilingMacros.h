@@ -1,10 +1,13 @@
 #pragma once
 
+
 #ifdef BS_PROFILING_ON
 #include "Profiling/ProfileTimer.h"
 
-#define BS_PROFILE_RANGE(Name) ::Bloodshot::FProfileTimer __InternalProfileTimer(Name, false)
-#define BS_PROFILE_FUNCTION() ::Bloodshot::FProfileTimer __InternalProfileTimer(BS_FUNC_SIG, true)
+#include <source_location>
+
+#define BS_PROFILE_RANGE(Name) ::Bloodshot::FProfileTimer __InternalProfileTimer(Name)
+#define BS_PROFILE_FUNCTION() ::Bloodshot::FProfileTimer __InternalProfileTimer(std::source_location::current().function_name())
 #else
 #define BS_PROFILE_RANGE(Name)
 #define BS_PROFILE_FUNCTION()

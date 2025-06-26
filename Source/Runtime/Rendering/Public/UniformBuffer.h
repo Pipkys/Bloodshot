@@ -1,14 +1,27 @@
 #pragma once
 
-#include <cstdint>
+#include "Core.h"
 
 namespace Bloodshot
 {
-	class IUniformBuffer
+	class FUniformBuffer final
 	{
-	public:
-		virtual ~IUniformBuffer() {}
+		friend class FRHI;
 
-		virtual void SetData(const void* Data, const uint32_t Size, uint32_t Offset = 0) = 0;
+	public:
+		~FUniformBuffer();
+
+		void SetData(const void* const InData, const size_t InSize, const uint32_t InOffset = 0);
+
+	private:
+		FUniformBuffer(const size_t InSize,
+			const uint32_t InBinding);
+
+		FUniformBuffer(const size_t InSize,
+			const uint32_t InBinding,
+			const void* const InData, 
+			const uint32_t InOffset = 0);
+
+		uint32_t UniqueID;
 	};
 }

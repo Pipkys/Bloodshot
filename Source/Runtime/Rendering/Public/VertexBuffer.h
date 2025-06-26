@@ -1,31 +1,61 @@
 #pragma once
 
-#include "VertexBufferLayout.h"
+#include "Core.h"
 
-#include <cstdint>
+#include "VertexBufferLayout.h"
 
 namespace Bloodshot
 {
-	class IVertexBuffer
+	class FVertexBuffer final
 	{
+		friend class FRHI;
+
 	public:
-		IVertexBuffer(const uint32_t VertexCount);
-		virtual ~IVertexBuffer() {}
+		~FVertexBuffer();
 
-		virtual const FVertexBufferLayout& GetLayout() const = 0;
+		NODISCARD FORCEINLINE uint32_t GetUniqueID() const
+		{
+			return UniqueID;
+		}
 
-		virtual void Bind() const = 0;
-		virtual void Unbind() const = 0;
-
-		virtual void SetData(const void* Data, const uint32_t Size) = 0;
-		virtual void SetLayout(const FVertexBufferLayout& Layout) = 0;
+		NODISCARD FORCEINLINE const FVertexBufferLayout& GetLayout() const
+		{
+			return Layout;
+		}
 
 		NODISCARD FORCEINLINE uint32_t GetVertexCount() const
 		{
 			return VertexCount;
 		}
 
+		void Bind() const;
+		void Unbind() const;
+
+		//void SetVertices(const void* const InVertices, const size_t InSize);
+
+		FORCEINLINE void SetLayout(const FVertexBufferLayout& InLayout)
+		{
+			Layout = InLayout;
+		}
+
+		FORCEINLINE void SetLayout(FVertexBufferLayout&& InLayout)
+		{
+			Layout = std::move(InLayout);
+		}
+
 	private:
+		FVertexBuffer(const void* const InVertices,
+			const uint32_t InVertexCount,
+			const size_t InSize,
+			const FVertexBufferLayout& InLayout);
+
+		FVertexBuffer(const void* const InVertices,
+			const uint32_t InVertexCount,
+			const size_t InSize,
+			FVertexBufferLayout&& InLayout);
+
+		uint32_t UniqueID;
 		uint32_t VertexCount;
+		FVertexBufferLayout Layout;
 	};
 }

@@ -1,12 +1,5 @@
 project(Shared)
 
-file(GLOB_RECURSE SHARED_SOURCES ${PROJECT_SOURCE_DIR}/*.cpp)
-file(GLOB_RECURSE SHARED_HEADERS ${PROJECT_SOURCE_DIR}/*.h)
+define_shared_module()
 
-add_library(${PROJECT_NAME} SHARED ${SHARED_SOURCES} ${SHARED_HEADERS})
-module_include_content(${PROJECT_NAME} ${PROJECT_SOURCE_DIR} PUBLIC PRIVATE)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ${BLOODSHOT_PROJECT_FOLDER_NAME})
-module_output_properties(${PROJECT_NAME} ${PROJECT_NAME} ${BLOODSHOT_BINARIES_DIR})
-
-source_group(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} PUBLIC Core)

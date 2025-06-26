@@ -13,8 +13,11 @@
 #include "Containers/Set.h"
 #include "Containers/SparseArray.h"
 #include "Containers/String.h"
+#include "Containers/StringFwd.h"
 #include "Containers/StringView.h"
 #include "Containers/Tuple.h"
+
+#include "Filesystem/Filesystem.h"
 
 #include "Logging/Logger.h"
 #include "Logging/LoggingMacros.h"
@@ -38,6 +41,7 @@
 #include "Object/Object.h"
 #include "Object/ObjectGlobals.h"
 #include "Object/ObjectMacros.h"
+#include "Object/ObjectSharedPtr.h"
 
 #include "Platform/Platform.h"
 #include "Platform/Process.h"
@@ -50,10 +54,11 @@
 #include "Serialization/Encoder.h"
 
 #include "String/Format.h"
+#include "String/LowLevelFormat.h"
 #include "String/LowLevelString.h"
 #include "String/LowLevelStringAllocator.h"
 #include "String/LowLevelStringBuilder.h"
-#include "String/ParseTokens.h"
+#include "String/StringManipulations.h"
 
 #include "Templates/ElementType.h"
 #include "Templates/IsCharRange.h"
@@ -64,3 +69,5 @@
 #include "Templates/Template.h"
 #include "Templates/TypeHash.h"
 #include "Templates/TypeTraits.h"
+
+#include "CoreGlobals.h"

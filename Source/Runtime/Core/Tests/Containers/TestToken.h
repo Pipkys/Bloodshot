@@ -10,7 +10,7 @@ namespace Bloodshot::Test
 	class TTestToken
 	{
 	public:
-		TTestToken() noexcept
+		TTestToken()
 		{
 			ConstructorCalls++;
 		}
@@ -29,7 +29,7 @@ namespace Bloodshot::Test
 			++MoveConstructorCalls;
 		}
 
-		TTestToken(const InElementType& InValue) noexcept
+		TTestToken(const InElementType& InValue)
 		{
 			ConstructorCalls++;
 			Value = InValue;

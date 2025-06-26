@@ -1,46 +1,54 @@
-#include "OpenGL/OpenGLVertexBuffer.h" 
+#include "VertexBuffer.h"
 #include "OpenGL/OpenGLHeader.h"
-#include "Profiling/ProfilingMacros.h"
 
 namespace Bloodshot
 {
-	FOpenGLVertexBuffer::FOpenGLVertexBuffer(const void* const Data, const uint32_t Size, const uint32_t VertexCount)
-		: IVertexBuffer(VertexCount)
+	namespace Private::OpenGL::VertexBuffer
 	{
-		BS_PROFILE_FUNCTION();
-
-		glCreateBuffers(1, &UniqueID);
-		glBindBuffer(GL_ARRAY_BUFFER, UniqueID);
-		glBufferData(GL_ARRAY_BUFFER, Size, Data, GL_STATIC_DRAW);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		FORCEINLINE void CreateBuffer(uint32_t& OutUniqueID, const void* const InVertices, const size_t InSize)
+		{
+			glCreateBuffers(1, &OutUniqueID);
+			glNamedBufferStorage(OutUniqueID, InSize, InVertices, GL_MAP_READ_BIT);
+		}
 	}
 
-	FOpenGLVertexBuffer::~FOpenGLVertexBuffer()
+	FVertexBuffer::FVertexBuffer(const void* const InVertices,
+		const uint32_t InVertexCount,
+		const size_t InSize,
+		const FVertexBufferLayout& InLayout)
+		: VertexCount(InVertexCount)
+		, Layout(InLayout)
 	{
-		BS_PROFILE_FUNCTION();
+		Private::OpenGL::VertexBuffer::CreateBuffer(UniqueID, InVertices, InSize);
+	}
 
+	FVertexBuffer::FVertexBuffer(const void* const InVertices,
+		const uint32_t InVertexCount,
+		const size_t InSize,
+		FVertexBufferLayout&& InLayout)
+		: VertexCount(InVertexCount)
+		, Layout(std::move(InLayout))
+	{
+		Private::OpenGL::VertexBuffer::CreateBuffer(UniqueID, InVertices, InSize);
+	}
+
+	FVertexBuffer::~FVertexBuffer()
+	{
 		glDeleteBuffers(1, &UniqueID);
 	}
 
-	void FOpenGLVertexBuffer::Bind() const
+	void FVertexBuffer::Bind() const
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, UniqueID);
 	}
 
-	void FOpenGLVertexBuffer::Unbind() const
+	void FVertexBuffer::Unbind() const
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
-	void FOpenGLVertexBuffer::SetData(const void* Data, const uint32_t Size)
-	{
-		glBindBuffer(GL_ARRAY_BUFFER, UniqueID);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, Size, Data);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	}
-
-	void FOpenGLVertexBuffer::SetLayout(const FVertexBufferLayout& Layout)
-	{
-		this->Layout = Layout;
-	}
+	//void FVertexBuffer::SetVertices(const void* const InVertices, const size_t InSize)
+	//{
+	//	glNamedBufferSubData(UniqueID, 0, InSize, InVertices);
+	//}
 }

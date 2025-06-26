@@ -2,7 +2,7 @@
 
 #include "Core.h"
 
-#include "BufferElement.h"
+#include "VertexBufferElement.h"
 
 namespace Bloodshot
 {
@@ -11,12 +11,20 @@ namespace Bloodshot
 	public:
 		using FElementArray = TArray<FVertexBufferElement>;
 
-		FORCEINLINE FVertexBufferLayout() noexcept = default;
-		FVertexBufferLayout(std::initializer_list<FVertexBufferElement> Elements);
+		FVertexBufferLayout(std::initializer_list<FVertexBufferElement> InElements)
+			: Elements(InElements)
+		{
+			CalculateElementsOffsetsAndStride();
+		}
 
 		NODISCARD FORCEINLINE const FElementArray& GetElements() const
 		{
 			return Elements;
+		}
+
+		NODISCARD FORCEINLINE size_t GetSize() const
+		{
+			return Elements.GetSize();
 		}
 
 		NODISCARD FORCEINLINE uint16_t GetStride() const
@@ -38,7 +46,16 @@ namespace Bloodshot
 		FElementArray Elements;
 		uint16_t Stride = 0;
 
-		void CalculateElementsOffsetsAndStride();
+		FORCEINLINE void CalculateElementsOffsetsAndStride()
+		{
+			uint16_t Offset = 0;
+			Stride = 0;
+			for (FVertexBufferElement& Element : Elements)
+			{
+				Element.Offset = Offset;
+				Offset += Element.Size;
+				Stride += Element.Size;
+			}
+		}
 	};
 }
-
