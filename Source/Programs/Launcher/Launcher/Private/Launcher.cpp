@@ -2,7 +2,7 @@
 
 namespace Bloodshot::Launcher
 {
-	NODISCARD FLauncher& Bloodshot::Launcher::FLauncher::GetInstance()
+	FLauncher& FLauncher::GetInstance()
 	{
 		static FLauncher Instance;
 		return Instance;

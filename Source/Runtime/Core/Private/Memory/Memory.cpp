@@ -49,17 +49,17 @@ namespace Bloodshot
 		BS_CHECK(Size > 0);
 		void* const Memory = malloc(Size);
 		BS_ASSERT(Memory, "FMemory::Malloc: Failed to allocate memory");
-		FAllocationLogger::GetInstance().OnMemoryAllocated(Size);
+		FAllocationLogger::OnMemoryAllocated(Size);
 		return Memory;
 	}
 
-	void FMemory::Free(void* const Block) noexcept
+	void FMemory::Free(void* const Block)
 	{
 		if (Block)
 		{
 			const size_t BlockSize = _msize(Block);
 			free(Block);
-			FAllocationLogger::GetInstance().OnMemoryDeallocated(BlockSize);
+			FAllocationLogger::OnMemoryDeallocated(BlockSize);
 		}
 	}
 
@@ -77,15 +77,14 @@ namespace Bloodshot
 		}
 		void* const NewBlock = realloc(Block, Size);
 		BS_ASSERT(NewBlock, "FMemory::Realloc: Failed to reallocate memory");
-		FAllocationLogger& AllocationLogger = FAllocationLogger::GetInstance();
 
 		if (Size > OldBlockSize)
 		{
-			AllocationLogger.OnMemoryAllocated(Size - OldBlockSize);
+			FAllocationLogger::OnMemoryAllocated(Size - OldBlockSize);
 		}
 		else if(OldBlockSize > Size)
 		{
-			AllocationLogger.OnMemoryDeallocated(OldBlockSize - Size);
+			FAllocationLogger::OnMemoryDeallocated(OldBlockSize - Size);
 		}
 
 		return NewBlock;

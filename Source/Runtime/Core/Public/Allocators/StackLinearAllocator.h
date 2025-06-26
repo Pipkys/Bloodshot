@@ -16,30 +16,63 @@ namespace Bloodshot
 	class TStackLinearAllocator final : public IAllocator
 	{
 	public:
-		NODISCARD FORCEINLINE FStackLinearAllocatorStats GetStats() const noexcept
+		class ForAnyElementType : public IAllocator::Contiguous::ForAnyElementType
 		{
-			return FStackLinearAllocatorStats(Size, Offset);
-		}
+		public:
+			NODISCARD FORCEINLINE void* GetAllocation() const
+			{
+				return (void*)Data;
+			}
 
-		FORCEINLINE void* Allocate(const size_t InSize)
+			NODISCARD FORCEINLINE size_t GetInitialCapacity() const
+			{
+				return Size;
+			}
+
+			NODISCARD FORCEINLINE bool HasAllocation() const
+			{
+				return true;
+			}
+
+			NODISCARD FORCEINLINE void* ExchangeAllocation(const size_t CurrentSize, const size_t NewSize, const size_t ElementSizeInBytes)
+			{
+				return nullptr;
+			}
+
+			FORCEINLINE void ConsumeAllocation(void* const InData) const
+			{
+			}
+
+			FORCEINLINE void ResizeAllocation(const size_t CurrentSize, const size_t NewSize, const size_t ElementSizeInBytes)
+			{
+			}
+
+			FORCEINLINE void Dispose()
+			{
+			}
+
+		private:
+			std::byte Data[Size];
+			size_t Offset = 0;
+		};
+
+		template<typename ElementType>
+		class ForElementType : public ForAnyElementType
 		{
-			BS_CHECK(Offset + InSize > Size);
-			void* const Result = reinterpret_cast<std::byte*>(Data) + Offset;
-			Offset += InSize;
-			return Result;
-		}
+			using Super = ForAnyElementType;
+			using Super::GetAllocation;
+			using Super::ExchangeAllocation;
 
-		void Deallocate(void* const InBlock, const size_t InSize) {}
+		public:
+			NODISCARD FORCEINLINE ElementType* GetAllocation() const
+			{
+				return reinterpret_cast<ElementType*>(Super::GetAllocation());
+			}
 
-		FORCEINLINE void Reset()
-		{
-			Offset = 0;
-		}
-
-		void Dispose() {}
-
-	protected:
-		std::byte Data[Size];
-		size_t Offset = 0;
+			NODISCARD FORCEINLINE ElementType* ExchangeAllocation(const size_t CurrentSize, const size_t NewSize, const size_t ElementSizeInBytes)
+			{
+				return reinterpret_cast<ElementType*>(Super::ExchangeAllocation(CurrentSize, NewSize, ElementSizeInBytes));
+			}
+		};
 	};
 }

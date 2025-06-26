@@ -11,7 +11,7 @@ namespace Bloodshot
 	template<>
 	struct TIsCharType<char>
 	{
-		static constexpr bool Value = false;
+		static constexpr bool Value = true;
 	};
 
 	template <typename T>

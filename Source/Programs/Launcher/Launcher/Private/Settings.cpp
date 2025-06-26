@@ -2,7 +2,7 @@
 
 namespace Bloodshot::Launcher
 {
-	NODISCARD FSettings& FSettings::GetInstance()
+	FSettings& FSettings::GetInstance()
 	{
 		static FSettings Instance;
 		return Instance;

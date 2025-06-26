@@ -19,7 +19,6 @@ namespace Bloodshot
 	{
 		enum
 		{
-			SerializedOnly
 		};
 	}
 
@@ -28,7 +27,6 @@ namespace Bloodshot
 	{
 		enum
 		{
-			Serialized,
 			Replicated
 		};
 	}

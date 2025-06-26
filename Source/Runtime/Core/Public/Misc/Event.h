@@ -53,19 +53,19 @@ namespace Bloodshot
 	class FEvent
 	{
 	public:
-		NODISCARD FORCEINLINE FEventView GetView() noexcept
+		NODISCARD FORCEINLINE FEventView GetView()
 		{
 			return FEventView(this);
 		}
 
 		FORCEINLINE void Subscribe(const uint32_t FuncUniqueID, std::function<void()>&& Func)
 		{
-			Subscriptions.emplace_back(FSubscription(FuncUniqueID, std::move(Func)));
+			Subscriptions.AddTail(FSubscription(FuncUniqueID, std::move(Func)));
 		}
 
 		FORCEINLINE void Unsubscribe(const uint32_t FuncUniqueID)
 		{
-			Subscriptions.remove_if([FuncUniqueID](const FSubscription& Sub)
+			Subscriptions.RemoveByPredicate([FuncUniqueID](const FSubscription& Sub)
 			{
 				return Sub.UniqueID == FuncUniqueID;
 			});

@@ -7,13 +7,18 @@
 #include "Object/Object.h"
 #include "Platform/Platform.h"
 #include "Profiling/ProfilingMacros.h"
+#include "String/StringManipulations.h"
 #include "Templates/TypeTraits.h"
 
 namespace Bloodshot
 {
 	namespace Private
 	{
-		namespace Launch { class IEngineContext; }
+		namespace Launch
+		{
+			class IEngineContext;
+		}
+
 		namespace Object
 		{
 			using FObjectAllocatorView = FAllocatorView::NonContiguous::Generic;
@@ -29,11 +34,6 @@ namespace Bloodshot
 				friend class Launch::IEngineContext;
 
 			public:
-				FORCEINLINE ~FObjectCore()
-				{
-					Dispose();
-				}
-
 				NODISCARD static FObjectCore& GetInstance();
 
 				template<IsObject T, typename... ArgTypes>
@@ -93,15 +93,42 @@ namespace Bloodshot
 				}
 
 			private:
-				FORCEINLINE FObjectCore()
-				{
-					Objects.Reserve(32768);
-				}
+				FObjectCore() {}
 
 				using FObjectAllocatorMap = TMap<uint32_t, FObjectAllocatorView>;
 				FObjectAllocatorMap ObjectAllocators;
 
-				TSet<IObject*> Objects;
+				using FObjectSet = TSet<IObject*>;
+				FObjectSet Objects;
+
+				FORCEINLINE static void StaticConstructor()
+				{
+					GetInstance().Objects.Reserve(32768);
+				}
+
+				FORCEINLINE static void StaticDestructor()
+				{
+					BS_PROFILE_FUNCTION();
+
+					FObjectCore& Instance = GetInstance();
+					FObjectAllocatorMap& ObjectAllocators = Instance.ObjectAllocators;
+					FObjectSet Objects = Instance.Objects;
+
+					for (IObject* const Object : Objects)
+					{
+						FMemory::Free(Object->ObjectClass);
+						DestructElement(Object);
+					}
+					Objects.Dispose();
+
+					for (TPair<uint32_t, FObjectAllocatorView>& ObjectAllocatorPair : ObjectAllocators)
+					{
+						FObjectAllocatorView ObjectAllocatorView = ObjectAllocatorPair.Second;
+						ObjectAllocatorView.CallDestructor();
+						delete ObjectAllocatorView.GetAllocatorPtr();
+					}
+					ObjectAllocators.Dispose();
+				}
 
 				NODISCARD static FObjectAllocatorView FindObjectAllocator(const uint32_t ObjectTypeID);
 
@@ -125,15 +152,13 @@ namespace Bloodshot
 					ObjectAllocators.Emplace(ObjectTypeID, View);
 					return Allocator;
 				}
-
-				void Dispose();
 			};
 
 			template<typename ClassType, typename FunctionType, IsObject ObjectType, typename... ArgTypes>
 			class IFunctionCaller final
 			{
 			public:
-				static void Call(ObjectType* Object, ArgTypes&&... Args);
+				static void Call(ObjectType* Object, void* Return, ArgTypes&&... Args);
 			};
 		}
 	}

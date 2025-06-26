@@ -1,14 +1,12 @@
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <string_view>
+#include "Core.h"
 
 namespace Bloodshot
 {
 	enum class EColorChannels : uint8_t
 	{
-		R = 0,
+		R = 1,
 		RG,
 		RGB,
 		RGBA
@@ -16,36 +14,37 @@ namespace Bloodshot
 
 	enum class ETextureUnit : uint8_t
 	{
-		Color = 0,
-		Shadow = 1,
-		Normal = 2,
-		Random = 3,
-		Displacement = 4,
-		Albedo = 5,
-		Roughness = 6,
-		Motion = 7,
-		Specular = 8,
-		CascacdeShadow0 = Shadow,
-		CascacdeShadow1 = 9,
-		CascacdeShadow2 = 10,
-		ShadowCubeMap = 11,
-		ShadowMapRandomOffset = 12,
-		DetailMap = 13,
-		Metallic = 14,
-		Height = 15,
+		BaseColor = 0,
+		Diffuse = 1,
+		NormalMap = 2,
+		Roughness = 3,
+		Specular = 4,
+		Metallic = 5,
+		HeightMap = 6,
 	};
 
-	class ITexture
+	class FTexture final
 	{
-	public:
-		ITexture(const uint32_t Width, const uint32_t Height, const EColorChannels Channels);
-		virtual ~ITexture() {}
+		friend class FRHI;
 
-		virtual void Bind(const ETextureUnit Unit) const = 0;
-		virtual void Unbind(const ETextureUnit Unit) const = 0;
+	public:
+		~FTexture();
+
+		NODISCARD FORCEINLINE uint32_t GetUniqueID() const
+		{
+			return UniqueID;
+		}
+
+		void Bind(const ETextureUnit Unit) const;
+		void Unbind(const ETextureUnit Unit) const;
 
 	protected:
-		uint32_t UniqueID = 0;
+		FTexture(const uint32_t InWidth,
+			const uint32_t InHeight,
+			const EColorChannels InChannels,
+			const void* const InData);
+
+		uint32_t UniqueID;
 		uint32_t Width;
 		uint32_t Height;
 		EColorChannels Channels;

@@ -2,6 +2,7 @@
 
 #include "String/LowLevelString.h"
 #include "String/LowLevelStringAllocator.h"
+#include "String/StringManipulations.h"
 #include "Templates/IsCharRange.h"
 #include "Templates/IsCharType.h"
 #include "Templates/MemoryOperations.h"
@@ -28,23 +29,10 @@ namespace Bloodshot::Private::String
 		{
 			constexpr size_t BufferSize = sizeof(T) * CHAR_BIT;
 			char Buffer[BufferSize];
-			char* Ptr = &Buffer[BufferSize];
-			bool bNegative = InInt < (T)0;
-			T Temp = bNegative ? (T)-1 * InInt : InInt;
-			do
-			{
-				*(--Ptr) = '0' + (char)(Temp % (T)10);
-				Temp /= (T)10;
-			} while (Temp);
-			if (bNegative)
-			{
-				*(--Ptr) = '-';
-			}
-			FLowLevelString Result;
-			Result.Size = (size_t)(&Buffer[BufferSize] - Ptr);
-			Result.Data = OutAllocator.Allocate(Result.Size);
-			MoveConstructElements(Result.Data, Ptr, Result.Size);
-			return Result;
+			const size_t OutSize = snprintf(Buffer, BufferSize, "%llu", (uint64_t)InInt);
+			char* const Result = OutAllocator.Allocate(OutSize);
+			memcpy(Result, Buffer, OutSize);
+			return FLowLevelString(Result, OutSize);
 		}
 	};
 
@@ -53,55 +41,12 @@ namespace Bloodshot::Private::String
 	{
 		static FLowLevelString Build(const T& InFloat, FLowLevelStringAllocator& OutAllocator)
 		{
-			const int64_t FlooredInt = (int64_t)InFloat;
-			FLowLevelString IntPartResult = TLowLevelStringBuilder<int64_t>::Build(FlooredInt, OutAllocator);
 			constexpr size_t BufferSize = sizeof(T) * CHAR_BIT;
 			char Buffer[BufferSize];
-			char* Ptr = &Buffer[BufferSize];
-			T Fraction = InFloat - (T)FlooredInt;
-			if ((int64_t)std::ceil(Fraction) == 0)
-			{
-				*(--Ptr) = '0';
-			}
-			else
-			{
-				do
-				{
-					Fraction *= (T)10;
-					int64_t Floored = (int64_t)Fraction;
-					if (Floored == 0)
-					{
-						break;
-					}
-					*(--Ptr) = '0' + (char)Floored;
-					Fraction -= Floored;
-
-				} while (true);
-			}
-			*(--Ptr) = '.';
-			FLowLevelString FractionPartResult;
-			FractionPartResult.Size = (size_t)(&Buffer[BufferSize] - Ptr);
-			FractionPartResult.Data = OutAllocator.Allocate(FractionPartResult.Size);
-			MoveConstructElements(FractionPartResult.Data, Ptr, FractionPartResult.Size);
-			if (FractionPartResult.Size > 2)
-			{
-				char* FrontSwapPtr = FractionPartResult.Data + 1;
-				char* BackSwapPtr = FractionPartResult.Data + FractionPartResult.Size - 1;
-				size_t Counter = 0;
-				while (FrontSwapPtr < BackSwapPtr)
-				{
-					char Temp = *FrontSwapPtr;
-					*(FrontSwapPtr++) = *BackSwapPtr;
-					*(BackSwapPtr--) = Temp;
-					++Counter;
-					if (Counter == 5)
-					{
-						FractionPartResult.Size = 6;
-						break;
-					}
-				}
-			}
-			return FLowLevelString(IntPartResult.Data, IntPartResult.Size + FractionPartResult.Size);
+			const size_t OutSize = snprintf(Buffer, BufferSize, "%.8g", InFloat);
+			char* const Result = OutAllocator.Allocate(OutSize);
+			memcpy(Result, Buffer, OutSize);
+			return FLowLevelString(Result, OutSize);
 		}
 	};
 
@@ -152,10 +97,9 @@ namespace Bloodshot::Private::String
 		static FLowLevelString Build(const char* InStr, FLowLevelStringAllocator& OutAllocator)
 		{
 			FLowLevelString Result;
-			Result.Size = strlen(InStr);
+			Result.Size = Bloodshot::String::GetSize(InStr);
 			Result.Data = OutAllocator.Allocate(Result.Size);
 			MoveConstructElements(Result.Data, InStr, Result.Size);
-
 			return Result;
 		}
 	};
@@ -169,6 +113,24 @@ namespace Bloodshot::Private::String
 		}
 	};
 
+	template<>
+	struct TLowLevelStringBuilder<volatile char*>
+	{
+		static FLowLevelString Build(volatile char* InStr, FLowLevelStringAllocator& OutAllocator)
+		{
+			return TLowLevelStringBuilder<char*>::Build((char*)InStr, OutAllocator);
+		}
+	};
+
+	template<>
+	struct TLowLevelStringBuilder<const volatile char*>
+	{
+		static FLowLevelString Build(const volatile char* InStr, FLowLevelStringAllocator& OutAllocator)
+		{
+			return TLowLevelStringBuilder<char*>::Build((char*)InStr, OutAllocator);
+		}
+	};
+
 	template<IsCharRange T>
 	struct TLowLevelStringBuilder<T>
 	{
@@ -178,7 +140,6 @@ namespace Bloodshot::Private::String
 			Result.Size = Bloodshot::GetSize(InStr);
 			Result.Data = OutAllocator.Allocate(Result.Size);
 			MoveConstructElements(Result.Data, Bloodshot::GetData(InStr), Result.Size);
-
 			return Result;
 		}
 	};
@@ -207,6 +168,42 @@ namespace Bloodshot::Private::String
 		static FLowLevelString Build(const T& InStr, FLowLevelStringAllocator& OutAllocator)
 		{
 			return TLowLevelStringBuilder<T*>::Build(InStr, OutAllocator);
+		}
+	};
+
+	template<>
+	struct TLowLevelStringBuilder<void*>
+	{
+		static FLowLevelString Build(const void* InStr, FLowLevelStringAllocator& OutAllocator)
+		{
+			return TLowLevelStringBuilder<char*>::Build((char*)InStr, OutAllocator);
+		}
+	};
+
+	template<>
+	struct TLowLevelStringBuilder<const void*>
+	{
+		static FLowLevelString Build(const void* InStr, FLowLevelStringAllocator& OutAllocator)
+		{
+			return TLowLevelStringBuilder<void*>::Build((void*)InStr, OutAllocator);
+		}
+	};
+
+	template<>
+	struct TLowLevelStringBuilder<volatile void*>
+	{
+		static FLowLevelString Build(const volatile void* InStr, FLowLevelStringAllocator& OutAllocator)
+		{
+			return TLowLevelStringBuilder<void*>::Build((void*)InStr, OutAllocator);
+		}
+	};
+
+	template<>
+	struct TLowLevelStringBuilder<const volatile void*>
+	{
+		static FLowLevelString Build(const volatile void* InStr, FLowLevelStringAllocator& OutAllocator)
+		{
+			return TLowLevelStringBuilder<void*>::Build((void*)InStr, OutAllocator);
 		}
 	};
 }

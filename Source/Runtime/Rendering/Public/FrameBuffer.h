@@ -13,40 +13,59 @@ namespace Bloodshot
 		Depth = DEPTH24_STENCIL8
 	};
 
-	struct FFrameBufferSettings final
+	class FFrameBufferSettings final
 	{
+	public:
 		uint32_t Width = 0;
 		uint32_t Height = 0;
 		uint32_t Samples = 1;
-
 		bool SwapChainTarget = false;
-
 		TArray<EFrameBufferTextureFormat> Attachments;
 	};
 
-	class IFrameBuffer
+	class FFrameBuffer final
 	{
+		friend class FRHI;
+
 	public:
-		IFrameBuffer(const FFrameBufferSettings& Settings);
-		virtual ~IFrameBuffer() {}
+		~FFrameBuffer();
 
-		virtual void Bind() const = 0;
-		virtual void Unbind() const = 0;
-		
-		virtual void Resize(const uint32_t Width, const uint32_t Height) = 0;
-		virtual int ReadPixel(const uint32_t AttachmentIndex, const uint32_t X, const uint32_t Y) = 0;
+		NODISCARD FORCEINLINE const FFrameBufferSettings& GetSettings() const
+		{
+			return Settings;
+		}
 
-		virtual void ClearAttachment(const uint32_t AttachmentIndex, const uint32_t Value) = 0;
+		NODISCARD FORCEINLINE uint32_t GetColorAttachmentID(const size_t Index = 0) const
+		{
+			BS_CHECK(ColorAttachmentIDs.IsValidIndex(Index));
+			return ColorAttachmentIDs[Index];
+		}
+
+		void Bind() const;
+		void Unbind() const;
+
+		void Resize(const uint32_t Width, const uint32_t Height);
+
+		void ClearAttachment(const EFrameBufferTextureFormat Attachment, const glm::vec4& Color);
+		void ClearAttachment(const EFrameBufferTextureFormat Attachment, const uint32_t Value);
+		void ClearAttachment(const size_t AttachmentIndex, const glm::vec4& Color);
+		void ClearAttachment(const size_t AttachmentIndex, const uint32_t Value);
 
 	protected:
+		FFrameBuffer(const FFrameBufferSettings& InSettings);
+
 		static constexpr inline uint32_t MaxSize = 8192;
 
+		uint32_t UniqueID = 0;
 		FFrameBufferSettings Settings;
 
 		TArray<EFrameBufferTextureFormat> ColorAttachments;
+
+		TArray<uint32_t> ColorAttachmentIDs;
+		uint32_t DepthAttachmentIndex = 0;
+
 		EFrameBufferTextureFormat DepthAttachment = EFrameBufferTextureFormat::None;
 
-		TArray<uint32_t> ColorAttachmentIndices;
-		uint32_t DepthAttachmentIndex = 0;
+		void Recreate();
 	};
 }

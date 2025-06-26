@@ -2,24 +2,34 @@
 
 #include "Core.h"
 
-#include "IndexBuffer.h"
-#include "VertexBuffer.h"
-
 namespace Bloodshot
 {
-	class IVertexArray
+	class FVertexBuffer;
+	class FIndexBuffer;
+
+	class FVertexArray final
 	{
+		friend class FRHI;
+
 	public:
-		using FVertexBufferArray = TArray<TUniquePtr<IVertexBuffer>>;
+		~FVertexArray();
 
-		virtual ~IVertexArray() {};
-
-		NODISCARD FORCEINLINE const FVertexBufferArray& GetVertexBuffers() const
+		NODISCARD FORCEINLINE TArray<FVertexBuffer*>& GetVertexBuffers()
 		{
 			return VertexBuffers;
 		}
 
-		NODISCARD FORCEINLINE const TUniquePtr<IIndexBuffer>& GetIndexBuffer() const
+		NODISCARD FORCEINLINE const TArray<FVertexBuffer*>& GetVertexBuffers() const
+		{
+			return VertexBuffers;
+		}
+
+		NODISCARD FORCEINLINE FIndexBuffer* GetIndexBuffer()
+		{
+			return IndexBuffer;
+		}
+
+		NODISCARD FORCEINLINE const FIndexBuffer* GetIndexBuffer() const
 		{
 			return IndexBuffer;
 		}
@@ -29,16 +39,23 @@ namespace Bloodshot
 			return VertexCount;
 		}
 
-		virtual void Bind() const = 0;
-		virtual void Unbind() const = 0;
+		void Bind() const;
+		void Unbind() const;
 
-		virtual void AddVertexBuffer(TUniquePtr<IVertexBuffer>&& VertexBuffer) = 0;
-		virtual void SetIndexBuffer(TUniquePtr<IIndexBuffer>&& IndexBuffer) = 0;
+		void AddVertexBuffer(FVertexBuffer* const InVertexBuffer);
+		void SetIndexBuffer(FIndexBuffer* const InIndexBuffer);
 
-	protected:
-		FVertexBufferArray VertexBuffers;
-		TUniquePtr<IIndexBuffer> IndexBuffer = nullptr;
+	private:
+		FVertexArray();
+
+		uint32_t UniqueID;
+
+		TArray<FVertexBuffer*> VertexBuffers;
+		FIndexBuffer* IndexBuffer = nullptr;
+
 		uint32_t VertexBufferIndex = 0;
+		uint32_t VertexBufferOffset = 0;
+		uint32_t VertexBufferElementIndex = 0;
 		uint32_t VertexCount = 0;
 	};
 }

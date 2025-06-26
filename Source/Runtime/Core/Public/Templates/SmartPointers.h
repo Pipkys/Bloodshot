@@ -60,26 +60,26 @@ namespace Bloodshot
 			Other.Ptr = nullptr;
 		}
 
-		FORCEINLINE explicit TReference(std::nullptr_t Nullptr) noexcept
+		FORCEINLINE explicit TReference(std::nullptr_t Nullptr)
 			: Ptr(Nullptr)
 		{
 		}
 
-		FORCEINLINE TReference(PointerType Object) noexcept
+		FORCEINLINE TReference(PointerType Object)
 			: Ptr(Object)
 		{
 		}
 
 		FORCEINLINE ~TReference() {}
 
-		FORCEINLINE TReference& operator=(const TReference& Other) noexcept
+		FORCEINLINE TReference& operator=(const TReference& Other)
 		{
 			Ptr = Other.Ptr;
 			return *this;
 		}
 
 		template<typename OtherType>
-		FORCEINLINE TReference& operator=(const TReference<OtherType>& Other) noexcept
+		FORCEINLINE TReference& operator=(const TReference<OtherType>& Other)
 		{
 			Ptr = Other.Ptr;
 			return *this;
@@ -100,13 +100,13 @@ namespace Bloodshot
 			return *this;
 		}
 
-		FORCEINLINE TReference& operator=(std::nullptr_t Nullptr) noexcept
+		FORCEINLINE TReference& operator=(std::nullptr_t Nullptr)
 		{
 			Ptr = Nullptr;
 			return *this;
 		}
 
-		FORCEINLINE TReference& operator=(PointerType Object) noexcept
+		FORCEINLINE TReference& operator=(PointerType Object)
 		{
 			Ptr = Object;
 			return *this;
@@ -132,32 +132,32 @@ namespace Bloodshot
 			return Ptr;
 		}
 
-		FORCEINLINE bool operator==(std::nullptr_t Nullptr) const noexcept
+		FORCEINLINE bool operator==(std::nullptr_t Nullptr) const
 		{
 			return Ptr == Nullptr;
 		}
 
-		FORCEINLINE bool operator!=(std::nullptr_t Nullptr) const noexcept
+		FORCEINLINE bool operator!=(std::nullptr_t Nullptr) const
 		{
 			return !(Ptr == Nullptr);
 		}
 
-		NODISCARD FORCEINLINE operator bool() const noexcept
+		NODISCARD FORCEINLINE operator bool() const
 		{
 			return IsValid();
 		}
 
-		NODISCARD FORCEINLINE bool IsValid() const noexcept
+		NODISCARD FORCEINLINE bool IsValid() const
 		{
 			return Ptr != nullptr;
 		}
 
-		NODISCARD FORCEINLINE PointerType GetRawPtr() noexcept
+		NODISCARD FORCEINLINE PointerType GetRawPtr()
 		{
 			return Ptr;
 		}
 
-		NODISCARD FORCEINLINE ConstPointerType GetRawPtr() const noexcept
+		NODISCARD FORCEINLINE ConstPointerType GetRawPtr() const
 		{
 			return Ptr;
 		}
@@ -222,8 +222,8 @@ namespace Bloodshot
 			Reset();
 		}
 
-		FORCEINLINE TUniquePtr(std::nullptr_t Nullptr) noexcept : Ptr(Nullptr) {}
-		FORCEINLINE explicit TUniquePtr(PointerType Object) noexcept : Ptr(Object) {}
+		FORCEINLINE TUniquePtr(std::nullptr_t Nullptr) : Ptr(Nullptr) {}
+		FORCEINLINE explicit TUniquePtr(PointerType Object) : Ptr(Object) {}
 
 		TUniquePtr& operator=(const TUniquePtr& Other) = delete;
 
@@ -248,13 +248,13 @@ namespace Bloodshot
 			return *this;
 		}
 
-		FORCEINLINE TUniquePtr& operator=(std::nullptr_t Nullptr) noexcept
+		FORCEINLINE TUniquePtr& operator=(std::nullptr_t Nullptr)
 		{
 			Ptr = Nullptr;
 			return *this;
 		}
 
-		FORCEINLINE TUniquePtr& operator=(PointerType Object) noexcept
+		FORCEINLINE TUniquePtr& operator=(PointerType Object)
 		{
 			Ptr = Object;
 			return *this;
@@ -290,22 +290,22 @@ namespace Bloodshot
 			return !(Ptr == Nullptr);
 		}
 
-		NODISCARD FORCEINLINE operator bool() const noexcept
+		NODISCARD FORCEINLINE operator bool() const
 		{
 			return IsValid();
 		}
 
-		NODISCARD FORCEINLINE bool IsValid() const noexcept
+		NODISCARD FORCEINLINE bool IsValid() const
 		{
 			return Ptr != nullptr;
 		}
 
-		NODISCARD FORCEINLINE PointerType GetRawPtr() noexcept
+		NODISCARD FORCEINLINE PointerType GetRawPtr()
 		{
 			return Ptr;
 		}
 
-		NODISCARD FORCEINLINE ConstPointerType GetRawPtr() const noexcept
+		NODISCARD FORCEINLINE ConstPointerType GetRawPtr() const
 		{
 			return Ptr;
 		}

@@ -104,7 +104,7 @@ namespace Bloodshot
 			return !Compare(Other, IndexSequence);
 		}
 
-		NODISCARD FORCEINLINE constexpr size_t GetSize() const noexcept
+		NODISCARD FORCEINLINE constexpr size_t GetSize() const
 		{
 			return sizeof...(ElementTypes);
 		}
@@ -268,7 +268,7 @@ namespace Bloodshot
 
 		ElementType First;
 
-		NODISCARD FORCEINLINE constexpr size_t GetSize() const noexcept
+		NODISCARD FORCEINLINE constexpr size_t GetSize() const
 		{
 			return 1;
 		}
@@ -376,7 +376,7 @@ namespace Bloodshot
 		FirstElementType First;
 		SecondElementType Second;
 
-		NODISCARD FORCEINLINE constexpr size_t GetSize() const noexcept
+		NODISCARD FORCEINLINE constexpr size_t GetSize() const
 		{
 			return 2;
 		}

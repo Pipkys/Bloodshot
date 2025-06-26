@@ -5,7 +5,7 @@ void* operator new(const size_t Size)
 	return ::Bloodshot::FMemory::Malloc(Size);
 }
 
-void operator delete(void* const Block) noexcept
+void operator delete(void* const Block)
 {
 	::Bloodshot::FMemory::Free(Block);
 }

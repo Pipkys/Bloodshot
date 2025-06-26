@@ -5,7 +5,6 @@ option(BS_PROFILING "Profiling in engine" ON)
 option(BS_MULTITHREADING "Multithreading in engine" ON)
 option(BS_WITH_AUTOMATION_TESTS "Automation tests in engine" ON)
 option(BS_WITH_EDITOR "Builds engine with editor" ON)
-option(BS_NETWORKING "Networking in engine" ON)
 
 project("Bloodshot Engine")
 
@@ -35,16 +34,19 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(${BLOODSHOT_THIRD_PARTY_DIR}/glfw)
 module_output_properties(glfw glfw ${BLOODSHOT_BINARIES_DIR})
+target_include_directories(glfw PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/glfw/include)
 
 #glad
 add_subdirectory(${BLOODSHOT_THIRD_PARTY_DIR}/glad)
 set_target_properties(glad PROPERTIES FOLDER glad)
 module_output_properties(glad glad ${BLOODSHOT_BINARIES_DIR})
+target_include_directories(glad PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/glad/include)
 
 #glm
 add_subdirectory(${BLOODSHOT_THIRD_PARTY_DIR}/glm)
 set_target_properties(glm PROPERTIES FOLDER glm)
 module_output_properties(glm glm ${BLOODSHOT_BINARIES_DIR})
+target_include_directories(glm PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/glm)
 
 #stb_image
 set(STB_IMAGE_HEADER ${BLOODSHOT_THIRD_PARTY_DIR}/stb_image/stb_image.h)
@@ -80,15 +82,38 @@ target_include_directories(imgui PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/imgui)
 target_include_directories(imgui PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/imgui/backends)
 target_include_directories(imgui PRIVATE ${BLOODSHOT_THIRD_PARTY_DIR}/glfw/include)
 
+#ImGuizmo
+file(GLOB IMGUIZMO_SOURCES ${BLOODSHOT_THIRD_PARTY_DIR}/ImGuizmo/*.cpp)
+file(GLOB IMGUIZMO_HEADERS ${BLOODSHOT_THIRD_PARTY_DIR}/ImGuizmo/*.h)
+
+add_library(ImGuizmo STATIC
+	${IMGUIZMO_SOURCES}
+	${IMGUIZMO_HEADERS})
+
+set_target_properties(ImGuizmo PROPERTIES FOLDER ImGuizmo)
+module_output_properties(ImGuizmo ImGuizmo ${BLOODSHOT_BINARIES_DIR})
+
+target_include_directories(ImGuizmo PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/ImGuizmo)
+target_include_directories(ImGuizmo PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/imgui)
+
+#ImGuiFileDialog
+add_subdirectory(${BLOODSHOT_THIRD_PARTY_DIR}/ImGuiFileDialog)
+set_target_properties(ImGuiFileDialog PROPERTIES FOLDER ImGuiFileDialog)
+module_output_properties(ImGuiFileDialog ImGuiFileDialog ${BLOODSHOT_BINARIES_DIR})
+
+target_include_directories(ImGuiFileDialog PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/ImGuizmo)
+target_include_directories(ImGuiFileDialog PUBLIC ${BLOODSHOT_THIRD_PARTY_DIR}/imgui)
+
+#Preprocessing
 execute_process(COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
 	"${BLOODSHOT_BINARIES_DIR}/Bloodshot Header Tool.exe" 
-	Source:${BLOODSHOT_SOURCE_DIR}/Runtime
+	Sources:${BLOODSHOT_SOURCE_DIR}/Runtime
 	Output:${BLOODSHOT_INTERMEDIATE_DIR}
 	COMMENT "Run Bloodshot Header Tool on Runtime sources")
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
 	"${BLOODSHOT_BINARIES_DIR}/Bloodshot Header Tool.exe" 
-	Source:${BLOODSHOT_SOURCE_DIR}/Editor
+	Sources:${BLOODSHOT_SOURCE_DIR}/Editor
 	Output:${BLOODSHOT_INTERMEDIATE_DIR}
 	COMMENT "Run Bloodshot Header Tool on Editor sources")
 
@@ -99,7 +124,9 @@ add_subdirectory(${BLOODSHOT_SHARED_DIR})
 add_subdirectory(${BLOODSHOT_PROGRAMS_DIR})
 
 #Editor
-add_subdirectory(${BLOODSHOT_SOURCE_DIR}/Editor)
+if(${BS_WITH_EDITOR})
+	add_subdirectory(${BLOODSHOT_SOURCE_DIR}/Editor)
+endif()
 
 #Runtime
 add_subdirectory(${BLOODSHOT_SOURCE_DIR}/Runtime)

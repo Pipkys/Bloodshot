@@ -50,6 +50,7 @@ namespace Bloodshot
 		};
 
 		static constexpr bool IsContiguous = IsContiguousAllocator<ForElementType<void*>>;
+		static constexpr bool IsNonContiguous = IsNonContiguousAllocator<ForElementType<void*>>;
 	};
 
 	template<IsSpecializedAllocator AllocatorType>
@@ -76,5 +77,6 @@ namespace Bloodshot
 		};
 
 		static constexpr bool IsContiguous = IsContiguousAllocator<AllocatorType>;
+		static constexpr bool IsNonContiguous = IsNonContiguousAllocator<AllocatorType>;
 	};
 }

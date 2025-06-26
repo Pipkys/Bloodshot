@@ -1,22 +1,33 @@
-#include "OpenGL/OpenGLUniformBuffer.h"
+#include "UniformBuffer.h"
 #include "OpenGL/OpenGLHeader.h"
 
 namespace Bloodshot
 {
-	FOpenGLUniformBuffer::FOpenGLUniformBuffer(const uint32_t Size, const uint32_t Binding)
+	FUniformBuffer::FUniformBuffer(const size_t InSize, const uint32_t InBinding)
 	{
 		glCreateBuffers(1, &UniqueID);
-		glNamedBufferData(UniqueID, Size, nullptr, GL_DYNAMIC_DRAW);
-		glBindBufferBase(GL_UNIFORM_BUFFER, Binding, UniqueID);
+		glNamedBufferData(UniqueID, InSize, nullptr, GL_DYNAMIC_DRAW);
+		glBindBufferBase(GL_UNIFORM_BUFFER, InBinding, UniqueID);
 	}
 
-	FOpenGLUniformBuffer::~FOpenGLUniformBuffer()
+	FUniformBuffer::FUniformBuffer(const size_t InSize,
+		const uint32_t InBinding,
+		const void* const InData,
+		const uint32_t InOffset)
+	{
+		glCreateBuffers(1, &UniqueID);
+		glNamedBufferData(UniqueID, InSize, nullptr, GL_DYNAMIC_DRAW);
+		glBindBufferBase(GL_UNIFORM_BUFFER, InBinding, UniqueID);
+		glNamedBufferSubData(UniqueID, InOffset, InSize, InData);
+	}
+
+	FUniformBuffer::~FUniformBuffer()
 	{
 		glDeleteBuffers(1, &UniqueID);
 	}
 
-	void FOpenGLUniformBuffer::SetData(const void* Data, const uint32_t Size, const uint32_t Offset)
+	void FUniformBuffer::SetData(const void* const InData, const size_t InSize, const uint32_t InOffset)
 	{
-		glNamedBufferSubData(UniqueID, Offset, Size, Data);
+		glNamedBufferSubData(UniqueID, InOffset, InSize, InData);
 	}
 }

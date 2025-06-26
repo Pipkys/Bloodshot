@@ -9,7 +9,7 @@ namespace Bloodshot::Launcher
 	struct FTexture final
 	{
 		GLuint UniqueID = 0;
-		std::string Name = {};
+		FString Name = {};
 
 		int Width = 0;
 		int Height = 0;

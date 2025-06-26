@@ -91,9 +91,10 @@ namespace Bloodshot
 	{
 	public:
 		using ElementType = uint64_t;
-		using AllocatorType = typename TAllocatorTraits<InAllocatorType>::template ForElementType<ElementType>;
+		using AllocatorType = InAllocatorType;
+		using ElementAllocatorType = typename TAllocatorTraits<AllocatorType>::template ForElementType<ElementType>;
 
-		FORCEINLINE TBitArray() noexcept = default;
+		FORCEINLINE TBitArray() = default;
 
 		FORCEINLINE TBitArray(const TBitArray& Other)
 			: Size(Other.Size)
@@ -103,19 +104,19 @@ namespace Bloodshot
 			memcpy(GetData(), Other.GetData(), Size * sizeof(ElementType));
 		}
 
-		FORCEINLINE TBitArray(TBitArray&& Other) noexcept
+		FORCEINLINE TBitArray(TBitArray&& Other)
 			: Size(std::exchange(Other.Size, 0))
 		{
 			Allocator.Move(Other.Allocator);
 			Capacity = std::exchange(Other.Capacity, Other.Allocator.GetInitialCapacity());
 		}
 
-		FORCEINLINE TBitArray(const AllocatorType& InAllocator)
+		FORCEINLINE TBitArray(const ElementAllocatorType& InAllocator)
 			: Allocator(InAllocator)
 		{
 		}
 
-		FORCEINLINE TBitArray(AllocatorType&& InAllocator)
+		FORCEINLINE TBitArray(ElementAllocatorType&& InAllocator)
 			: Allocator(std::move(InAllocator))
 		{
 		}
@@ -179,32 +180,32 @@ namespace Bloodshot
 			Dispose();
 		}
 
-		NODISCARD FORCEINLINE ElementType* GetData() noexcept
+		NODISCARD FORCEINLINE ElementType* GetData()
 		{
 			return Allocator.GetAllocation();
 		}
 
-		NODISCARD FORCEINLINE const ElementType* GetData() const noexcept
+		NODISCARD FORCEINLINE const ElementType* GetData() const
 		{
 			return Allocator.GetAllocation();
 		}
 
-		NODISCARD FORCEINLINE size_t GetSize() const noexcept
+		NODISCARD FORCEINLINE size_t GetSize() const
 		{
 			return Size;
 		}
 
-		NODISCARD FORCEINLINE size_t GetCapacity() const noexcept
+		NODISCARD FORCEINLINE size_t GetCapacity() const
 		{
 			return Capacity;
 		}
 
-		NODISCARD FORCEINLINE bool IsEmpty() const noexcept
+		NODISCARD FORCEINLINE bool IsEmpty() const
 		{
 			return !Size;
 		}
 
-		NODISCARD FORCEINLINE bool IsValidIndex(const size_t Index) const noexcept
+		NODISCARD FORCEINLINE bool IsValidIndex(const size_t Index) const
 		{
 			return Index >= 0 && Index < Size;
 		}
@@ -271,7 +272,7 @@ namespace Bloodshot
 			return GetBitReferenceFromIndex(Index);
 		}
 
-		FORCEINLINE void RemoveLast() noexcept
+		FORCEINLINE void RemoveLast()
 		{
 			BS_ASSERT(Size, "TBitArray: RemoveLast() called on empty BitArray");
 			--Size;
@@ -301,10 +302,10 @@ namespace Bloodshot
 
 	private:
 		template<bool bConst>
-		class TIteratorBase
+		class TBaseIterator
 		{
 		public:
-			TIteratorBase(TBitArray& InArray, const size_t StartIndex)
+			TBaseIterator(TBitArray& InArray, const size_t StartIndex)
 				: Array(InArray)
 				, Index(StartIndex)
 			{
@@ -315,57 +316,52 @@ namespace Bloodshot
 				return Array[Index];
 			}
 
-			FORCEINLINE FBitReference* operator->() const
-			{
-				return &Array[Index];
-			}
-
-			TIteratorBase& operator++()
+			FORCEINLINE TBaseIterator& operator++()
 			{
 				++Index;
 				return *this;
 			}
 
-			TIteratorBase operator++(int)
+			FORCEINLINE TBaseIterator operator++(int)
 			{
-				TIteratorBase Temp(*this);
+				TBaseIterator Temp(*this);
 				++Index;
 				return Temp;
 			}
 
-			TIteratorBase& operator--()
+			FORCEINLINE TBaseIterator& operator--()
 			{
 				--Index;
 				return *this;
 			}
 
-			TIteratorBase operator--(int)
+			FORCEINLINE TBaseIterator operator--(int)
 			{
-				TIteratorBase Temp(*this);
+				TBaseIterator Temp(*this);
 				--Index;
 				return Temp;
 			}
 
-			TIteratorBase& operator+=(const size_t Offset)
+			FORCEINLINE TBaseIterator& operator+=(const size_t Offset)
 			{
 				Index += Offset;
 				return *this;
 			}
 
-			TIteratorBase operator+(const size_t Offset) const
+			FORCEINLINE TBaseIterator operator+(const size_t Offset) const
 			{
-				TIteratorBase Temp(*this);
+				TBaseIterator Temp(*this);
 				return Temp += Offset;
 			}
 
-			TIteratorBase& operator-=(const size_t Offset)
+			FORCEINLINE TBaseIterator& operator-=(const size_t Offset)
 			{
 				return *this += -Offset;
 			}
 
-			TIteratorBase operator-(const size_t Offset) const
+			FORCEINLINE TBaseIterator operator-(const size_t Offset) const
 			{
-				TIteratorBase Temp(*this);
+				TBaseIterator Temp(*this);
 				return Temp -= Offset;
 			}
 
@@ -401,12 +397,12 @@ namespace Bloodshot
 				Index = 0;
 			}
 
-			FORCEINLINE bool operator==(const TIteratorBase& Other) const
+			NODISCARD FORCEINLINE bool operator==(const TBaseIterator& Other) const
 			{
 				return &Array == &Other.Array && Index == Other.Index;
 			}
 
-			FORCEINLINE bool operator!=(const TIteratorBase& Other) const
+			NODISCARD FORCEINLINE bool operator!=(const TBaseIterator& Other) const
 			{
 				return &Array != &Other.Array || Index != Other.Index;
 			}
@@ -417,9 +413,9 @@ namespace Bloodshot
 		};
 
 	public:
-		class FIterator : public TIteratorBase<false>
+		class FIterator : public TBaseIterator<false>
 		{
-			using Super = TIteratorBase<false>;
+			using Super = TBaseIterator<false>;
 
 		public:
 			FIterator(TBitArray& InArray, const size_t StartIndex = 0)
@@ -428,9 +424,9 @@ namespace Bloodshot
 			}
 		};
 
-		class FConstIterator : public TIteratorBase<true>
+		class FConstIterator : public TBaseIterator<true>
 		{
-			using Super = TIteratorBase<true>;
+			using Super = TBaseIterator<true>;
 
 		public:
 			FConstIterator(TBitArray& InArray, const size_t StartIndex = 0)
@@ -503,7 +499,7 @@ namespace Bloodshot
 				return CurrentBitIndex;
 			}
 
-			FORCEINLINE void SetToEnd() noexcept
+			FORCEINLINE void SetToEnd()
 			{
 				CurrentBitIndex = Array.Size;
 			}
@@ -559,33 +555,33 @@ namespace Bloodshot
 	private:
 		static inline constexpr ElementType FullWordMask = std::numeric_limits<ElementType>::max();
 		static inline constexpr size_t BitsPerWord = CHAR_BIT * sizeof(ElementType);
-		AllocatorType Allocator;
+		ElementAllocatorType Allocator;
 		size_t Size = 0;
 		size_t Capacity = 0;
 
-		NODISCARD FORCEINLINE size_t GetWordCount() const noexcept
+		NODISCARD FORCEINLINE size_t GetWordCount() const
 		{
 			return (size_t)((Size + BitsPerWord - 1) / BitsPerWord);
 		}
 
-		NODISCARD FORCEINLINE size_t GetCapacityGrowth() const noexcept
+		NODISCARD FORCEINLINE size_t GetCapacityGrowth() const
 		{
 			return (size_t)std::ceil((float)Capacity + (!Capacity ? 1 : Capacity) * 1.5f);
 		}
 
-		NODISCARD FORCEINLINE FBitReference GetBitReferenceFromIndex(const size_t Index) noexcept
+		NODISCARD FORCEINLINE FBitReference GetBitReferenceFromIndex(const size_t Index)
 		{
 			return FBitReference(GetData()[Index / BitsPerWord], 1ull << (Index & (BitsPerWord - 1ull)));
 		}
 
-		NODISCARD FORCEINLINE FConstBitReference GetBitReferenceFromIndex(const size_t Index) const noexcept
+		NODISCARD FORCEINLINE FConstBitReference GetBitReferenceFromIndex(const size_t Index) const
 		{
 			return FConstBitReference(GetData()[Index / BitsPerWord], 1ull << (Index & (BitsPerWord - 1ull)));
 		}
 
 		FORCEINLINE void RangeCheck(const size_t Index) const
 		{
-			BS_ASSERT(Index < Size, "TBitArray: index out of bounds, index - {}, size - {}", Index, Size);
+			BS_ASSERT(Index < Size, "TBitArray: Index out of bounds, Index - {}, Size - {}", Index, Size);
 		}
 
 		NODISCARD FORCEINLINE size_t CalculateWordCount(const size_t Bits)
@@ -615,7 +611,7 @@ namespace Bloodshot
 			SetWords(0, Count, bValue);
 		}
 
-		FORCEINLINE void SetBitUnchecked(const size_t Index, const bool Value) noexcept
+		FORCEINLINE void SetBitUnchecked(const size_t Index, const bool Value)
 		{
 			ElementType& Word = GetData()[Index / BitsPerWord];
 			const ElementType BitOffset = (Index % BitsPerWord);
@@ -688,7 +684,7 @@ namespace Bloodshot
 			return Allocator.ExchangeAllocation(CurrentSize, NewSize, sizeof(ElementType));
 		}
 
-		FORCEINLINE void ConsumeAllocation(ElementType* const Data) const noexcept
+		FORCEINLINE void ConsumeAllocation(ElementType* const Data) const
 		{
 			Allocator.ConsumeAllocation((void*)Data);
 		}

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Platform/Platform.h"
+#include "Core.h"
 
 THIRD_PARTY_INCLUDES_START
 #include <glad/glad.h>

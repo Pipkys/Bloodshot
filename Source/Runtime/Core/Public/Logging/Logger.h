@@ -5,6 +5,7 @@
 #include "Misc/EnumClassFlags.h"
 #include "Misc/LocalTime.h"
 #include "Platform/Platform.h"
+#include "Containers/String.h"
 #include "String/Format.h"
 
 #include <fstream>
@@ -18,46 +19,49 @@ namespace Bloodshot
 	public:
 		NODISCARD static FLogger& GetInstance();
 
-		NODISCARD FORCEINLINE void SetLogLevelFlags(const ELogLevel LogLevelFlags) noexcept
+		NODISCARD FORCEINLINE static ELogLevel GetLogLevelFlags()
 		{
-			CurrentLogLevelFlags = LogLevelFlags;
+			return GetInstance().LogLevelFlags;
 		}
 
-		NODISCARD FORCEINLINE bool IsSessionStarted() const noexcept
+		NODISCARD FORCEINLINE static void SetLogLevelFlags(const ELogLevel LogLevelFlags)
 		{
-			return bSessionStarted;
+			GetInstance().LogLevelFlags = LogLevelFlags;
+		}
+
+		NODISCARD FORCEINLINE static bool IsSessionStarted()
+		{
+			return GetInstance().bSessionStarted;
 		}
 
 		template<typename... ArgTypes>
-		void Log(const char* InFmt, const ELogLevel InLevel, ArgTypes&&... Args)
+		static void Log(const ELogLevel InLevel, const char* InFormat, ArgTypes&&... Args)
 		{
 #ifdef BS_LOGGING_ON
-			Private::String::FLowLevelString Str = Private::String::LLFormat(InFmt, std::forward<ArgTypes>(Args)...);
-			const char* const RawStr = Str.Data;
-
-			const char* const LogLevelStr = Private::LogLevel::LogLevelToString(InLevel);
-			const char* const LocalTimeStr = ILocalTime::Now();
-
+			FLogger& Instance = GetInstance();
+			const FString& LogString = String::Format(InFormat, std::forward<ArgTypes>(Args)...);
+			const char* const RawLogString = LogString.GetData();
+			const char* const LogLevelString = Private::LogLevel::LogLevelToString(InLevel);
+			const char* const LocalTimeString = ILocalTime::Now();
 			bool bWriteToFile = false;
 
-			if (EnumHasAllFlags(CurrentLogLevelFlags, InLevel))
+			if (EnumHasAllFlags(Instance.LogLevelFlags, InLevel))
 			{
 				// BSTODO: Temp
 				//#ifndef NDEBUG
-				ConsoleLog(Private::LogLevel::LogLevelToFormat(InLevel), Private::LogLevel::LogLevelToColorCode(InLevel), LogLevelStr, RawStr);
+				ConsoleLog(Private::LogLevel::LogLevelToFormat(InLevel), 
+					Private::LogLevel::LogLevelToColorCode(InLevel), 
+					LogLevelString, 
+					RawLogString);
 				//#endif
-
 				bWriteToFile = true;
 			}
 
-			if (bWriteToFile || bAlwaysWriteToFile)
+			if (bWriteToFile || Instance.bAlwaysWriteToFile)
 			{
-				Private::String::FLowLevelString OutputStr = Private::String::LLFormat("{} [{}]: {}\n", LocalTimeStr, LogLevelStr, RawStr);
-				OutputStream << OutputStr.Data;
-				OutputStr.Release();
+				const FString& OutputString = String::Format("{} [{}]: {}\n", LocalTimeString, LogLevelString, RawLogString);
+				Instance.OutputStream << OutputString.GetData();
 			}
-
-			Str.Release();
 #endif
 			if (InLevel == ELogLevel::Fatal)
 			{
@@ -69,18 +73,56 @@ namespace Bloodshot
 		}
 
 	private:
-		ELogLevel CurrentLogLevelFlags = ELogLevel::All;
+		FLogger() {}
+
+#ifdef BS_LOGGING_ON
 		std::ofstream OutputStream;
-
-		bool bSessionStarted = false;
 		bool bAlwaysWriteToFile = false;
+#endif
+		ELogLevel LogLevelFlags = ELogLevel::All;
+		bool bSessionStarted = false;
 
-		void BeginSession(const ELogLevel Level, const int OutputStreamOpenMode, const bool bAlwaysWriteToFile = false);
-		void EndSession();
+		FORCEINLINE static void StaticConstructor()
+		{
+#ifdef BS_LOGGING_ON
+			BeginSession((ELogLevel::All), std::ios::trunc);
+#endif
+		}
 
-		FORCEINLINE void ConsoleLog(const char* Format, const char* ColorCode, const char* LogLevel, const char* Message)
+		FORCEINLINE static void StaticDestructor()
+		{
+#ifdef BS_LOGGING_ON
+			const FAllocationsInfo& AllocationsInfo = FAllocationLogger::GetAllocationsInfo();
+
+			Log(ELogLevel::Info, "Allocated:   {}.B, {}.MB, {} Blocks",
+				AllocationsInfo.AllocatedSize,
+				AllocationsInfo.AllocatedSize >> 20ull,
+				AllocationsInfo.AllocatedBlockCount);
+
+			Log(ELogLevel::Info, "Deallocated: {}.B, {}.MB, {} Blocks",
+				AllocationsInfo.DeallocatedSize,
+				AllocationsInfo.DeallocatedSize >> 20ull,
+				AllocationsInfo.DeallocatedBlockCount);
+
+			FAllocationLogger::IsMemoryLeak()
+				? Log(ELogLevel::Warning, "Memory leak detected")
+				: Log(ELogLevel::Info, "Memory leak not detected");
+
+			EndSession();
+#endif
+		}
+
+		FORCEINLINE static void ConsoleLog(const char* const Format, 
+			const char* const ColorCode, 
+			const char* const LogLevel,
+			const char* const Message)
 		{
 			printf(Format, ColorCode, LogLevel, Message);
 		}
+
+#ifdef BS_LOGGING_ON
+		static void BeginSession(const ELogLevel Level, const int OutputStreamOpenMode, const bool bAlwaysWriteToFile = false);
+		static void EndSession();
+#endif
 	};
 }

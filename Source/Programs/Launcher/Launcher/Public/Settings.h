@@ -1,15 +1,13 @@
 #pragma once
 
-#include "OpenGL/ImGuiHeader.h"
-#include "ParseTokens.h"
-#include "Platform/Platform.h"
+#include "Core.h"
 
-#include <cassert>
+#include "OpenGL/ImGuiHeader.h"
+
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <memory>
-#include <string_view>
 
 namespace Bloodshot::Launcher
 {
@@ -25,37 +23,45 @@ namespace Bloodshot::Launcher
 
 		static inline const ImVec2 MinWindowSize = {1000, 500};
 
-		static inline const std::filesystem::path FontPath = "Resources\\Launcher\\Fonts\\Qilavoen.ttf";
-		static inline const std::filesystem::path LogoPath = "Resources\\Launcher\\Images\\Logo512.png";
-		static inline const std::filesystem::path SettingsIconPath = "Resources\\Launcher\\Images\\SettingsIcon512.png";
-		static inline const std::filesystem::path BackIconPath = "Resources\\Launcher\\Images\\BackIcon512.png";
+		static inline const std::filesystem::path FontPath = "../Resources/Common/Fonts/PT_Sans-Web-Regular.ttf";
+		static inline const std::filesystem::path LogoPath = "../Resources/Launcher/Images/Logo512.png";
+		static inline const std::filesystem::path SettingsIconPath = "../Resources/Launcher/Images/SettingsIcon512.png";
+		static inline const std::filesystem::path BackIconPath = "../Resources/Launcher/Images/BackIcon512.png";
 
 		NODISCARD static FSettings& GetInstance();
 
-		NODISCARD FORCEINLINE static const std::string& GetProjectsFolderPath()
+		NODISCARD FORCEINLINE static const FString& GetProjectsFolderPath()
 		{
 			return GetInstance().ProjectsFolderPath;
 		}
 
 		NODISCARD FORCEINLINE static size_t GetProjectsFolderPathSize()
 		{
-			return GetInstance().ProjectsFolderPathSize;
+			return ProjectsFolderPathSize;
+		}
+
+		NODISCARD FORCEINLINE static int GetLanguageIndex()
+		{
+			return GetInstance().LanguageIndex;
 		}
 
 	private:
 		FORCEINLINE FSettings()
 		{
+			FFilesystem::CreateDirectories("Config");
 			Load();
 		}
 
-		const char* Filename = "Settings.ini";
+		const char* Filename = "Config/Launcher Config.ini";
 		static inline constexpr const size_t ProjectsFolderPathSize = 1024;
-		std::string ProjectsFolderPath;
+		FString ProjectsFolderPath;
+		int LanguageIndex;
 
 		void Save()
 		{
 			std::ofstream OutputStream(Filename, std::ios::out | std::ios::trunc);
-			OutputStream << "ProjectsFolderPath: \"" << ProjectsFolderPath << "\"";
+			OutputStream << "ProjectsFolderPath: \"" << ProjectsFolderPath.GetData() << "\"\n";
+			OutputStream << "LanguageIndex: \"" << LanguageIndex << "\"";
 			OutputStream.close();
 		}
 
@@ -65,19 +71,33 @@ namespace Bloodshot::Launcher
 
 			if (!bSettingsFound)
 			{
-				ProjectsFolderPath = std::filesystem::current_path().string() + "\\Projects";
+				ProjectsFolderPath = FString(std::filesystem::current_path().string().c_str()).Append("\\Projects");
+				LanguageIndex = 0;
 			}
 			else
 			{
 				std::ifstream InputStream(Filename);
-				std::string Line;
+				std::string Temp;
+				FString Line;
 				bool bWrite = false;
-				std::getline(InputStream, Line);
-				Shared::ParseTokens(Line, " ", [this, &bWrite](std::string_view InToken)
+				std::getline(InputStream, Temp);
+				Line = Temp.c_str();
+				String::ParseTokens(Line, " ", [this, &bWrite](FStringView InToken)
 				{
 					if (bWrite)
 					{
-						ProjectsFolderPath = InToken.substr(1, InToken.length() - 2);
+						ProjectsFolderPath = InToken.SubStr(1, InToken.GetSize() - 2);
+					}
+					bWrite = true;
+				});
+				bWrite = false;
+				std::getline(InputStream, Temp);
+				Line = Temp.c_str();
+				String::ParseTokens(Line, " ", [this, &bWrite](FStringView InToken)
+				{
+					if (bWrite)
+					{
+						LanguageIndex = std::stoi(InToken.SubStr(1, InToken.GetSize() - 2).GetData());
 					}
 					bWrite = true;
 				});

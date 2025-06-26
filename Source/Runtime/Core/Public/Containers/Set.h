@@ -1,5 +1,8 @@
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 26495) // Variable '(NextIndex, HashIndex)' is uninitialized
+
 #include "Allocators/Allocator.h"
 #include "Allocators/AllocatorTraits.h"
 #include "Containers/SparseArray.h"
@@ -73,19 +76,26 @@ namespace Bloodshot
 		using AllocatorType = InAllocatorType;
 		using HashAllocatorType = InHashAllocatorType;
 
-	private:
-		static_assert(TAllocatorTraits<AllocatorType>::IsContiguous 
+		static_assert(TAllocatorTraits<AllocatorType>::IsContiguous
 			&& TAllocatorTraits<HashAllocatorType>::IsContiguous,
 			"TSet requires contiguous memory allocator");
 
+	private:
 		class FElement
 		{
 		public:
+			FElement() = default;
+
 			template<typename... ArgTypes>
 			FElement(ArgTypes&&... Args)
 				: Value(std::forward<ArgTypes>(Args)...)
 			{
 			}
+
+			FElement(FElement&&) = default;
+			FElement(const FElement&) = default;
+			FElement& operator=(FElement&&) = default;
+			FElement& operator=(const FElement&) = default;
 
 			mutable size_t NextIndex;
 			mutable size_t HashIndex;
@@ -102,7 +112,7 @@ namespace Bloodshot
 			*this = Other;
 		}
 
-		FORCEINLINE TSet(TSet&& Other)
+		FORCEINLINE TSet(TSet&& Other) noexcept
 		{
 			Move(*this, Other);
 		}
@@ -155,17 +165,17 @@ namespace Bloodshot
 			return Data[Index].Value;
 		}
 
-		NODISCARD FORCEINLINE size_t GetSize() const noexcept
+		NODISCARD FORCEINLINE size_t GetSize() const
 		{
 			return Data.GetSize();
 		}
 
-		NODISCARD FORCEINLINE bool IsEmpty() const noexcept
+		NODISCARD FORCEINLINE bool IsEmpty() const
 		{
 			return Data.IsEmpty();
 		}
 
-		NODISCARD FORCEINLINE bool IsValidIndex(const size_t Index) const noexcept
+		NODISCARD FORCEINLINE bool IsValidIndex(const size_t Index) const
 		{
 			return Index != IReservedValues::NoneIndex;
 		}
@@ -186,9 +196,9 @@ namespace Bloodshot
 		template<typename... ArgTypes>
 		size_t EmplaceByHash(const uint64_t KeyHash, ArgTypes&&... Args)
 		{
-			FSparseArrayAllocationInfo AllocationInfo = Data.AddUninitialized();
-			FElement& Element = *new(AllocationInfo) FElement(std::forward<ArgTypes>(Args)...);
-			size_t NewHashIndex = AllocationInfo.Index;
+			FSparseArrayAllocationInfo Allocation = Data.AddUninitialized();
+			FElement& Element = *new(Allocation) FElement(std::forward<ArgTypes>(Args)...);
+			size_t NewHashIndex = Allocation.Index;
 			if (!TryReplaceExisting(KeyHash, Element, NewHashIndex))
 			{
 				RehashOrLink(Element, NewHashIndex, KeyHash);
@@ -199,34 +209,15 @@ namespace Bloodshot
 		template<typename... ArgTypes>
 		size_t Emplace(ArgTypes&&... Args)
 		{
-			FSparseArrayAllocationInfo AllocationInfo = Data.AddUninitialized();
-			FElement& Element = *new(AllocationInfo) FElement(std::forward<ArgTypes>(Args)...);
-			size_t NewHashIndex = AllocationInfo.Index;
+			FSparseArrayAllocationInfo Allocation = Data.AddUninitialized();
+			FElement& Element = *new(Allocation) FElement(std::forward<ArgTypes>(Args)...);
+			size_t NewHashIndex = Allocation.Index;
 			const uint64_t KeyHash = KeyFuncs::GetKeyHash(KeyFuncs::GetSetKey(Element.Value));
 			if (!TryReplaceExisting(KeyHash, Element, NewHashIndex))
 			{
 				RehashOrLink(Element, NewHashIndex, KeyHash);
 			}
 			return NewHashIndex;
-		}
-
-		void Remove(const ElementType& Key)
-		{
-			const uint64_t KeyHash = KeyFuncs::GetKeyHash(Key);
-			size_t* NextIndex = &GetBucketIndex(KeyHash);
-			while (*NextIndex != IReservedValues::NoneIndex)
-			{
-				FElement& Element = Data[*NextIndex];
-				if (KeyFuncs::Matches(KeyFuncs::GetSetKey(Element.Value), Key))
-				{
-					RemoveByIndex(*NextIndex);
-					break;
-				}
-				else
-				{
-					NextIndex = &Element.NextIndex;
-				}
-			}
 		}
 
 		void RemoveByIndex(const size_t Index)
@@ -248,7 +239,34 @@ namespace Bloodshot
 			Data.RemoveAt(Index);
 		}
 
-		NODISCARD FORCEINLINE bool Contains(const ElementType& Key) const
+	private:
+		template<typename ComparableKey>
+		void RemoveImpl(const ComparableKey& Key)
+		{
+			const uint64_t KeyHash = KeyFuncs::GetKeyHash(Key);
+			size_t* NextIndex = &GetBucketIndex(KeyHash);
+			while (*NextIndex != IReservedValues::NoneIndex)
+			{
+				FElement& Element = Data[*NextIndex];
+				if (KeyFuncs::Matches(KeyFuncs::GetSetKey(Element.Value), Key))
+				{
+					RemoveByIndex(*NextIndex);
+					break;
+				}
+				else
+				{
+					NextIndex = &Element.NextIndex;
+				}
+			}
+		}
+
+	public:
+		void Remove(KeyInitType InKey)
+		{
+			RemoveImpl(InKey);
+		}
+
+		NODISCARD FORCEINLINE bool Contains(KeyInitType Key) const
 		{
 			const uint64_t KeyHash = KeyFuncs::GetKeyHash(Key);
 			const size_t KeyIndex = FindIndexByHash(KeyHash, Key);
@@ -259,7 +277,7 @@ namespace Bloodshot
 		NODISCARD ElementType* FindByHash(const uint64_t KeyHash, const ComparableKey& Key)
 		{
 			const size_t ElementIndex = FindIndexByHash(KeyHash, Key);
-			if(ElementIndex != IReservedValues::NoneIndex)
+			if (ElementIndex != IReservedValues::NoneIndex)
 			{
 				return &Data[ElementIndex].Value;
 			}
@@ -289,13 +307,13 @@ namespace Bloodshot
 		{
 			const size_t ExistingIndex = FindIndexByHash(KeyHash, KeyFuncs::GetSetKey(InElement));
 			const bool bIsAlreadyInSet = ExistingIndex != IReservedValues::NoneIndex;
-			if (bIsAlreadyInSet) 
+			if (bIsAlreadyInSet)
 			{
 				return Data[ExistingIndex].Value;
 			}
-			FSparseArrayAllocationInfo ElementAllocation = Data.AddUninitialized();
-			FElement Element = *new(ElementAllocation) FElement(std::forward<ElementType>(InElement));
-			RehashOrLink(Element, ElementAllocation.Index, KeyHash);
+			FSparseArrayAllocationInfo Allocation = Data.AddUninitialized();
+			FElement& Element = *new(Allocation) FElement(std::forward<ElementType>(InElement));
+			RehashOrLink(Element, Allocation.Index, KeyHash);
 			return Element.Value;
 		}
 
@@ -343,7 +361,7 @@ namespace Bloodshot
 		{
 			return HashAllocator.GetAllocation()[GetHashIndex(KeyHash)];
 		}
-		
+
 		template<typename ComparableKey>
 		NODISCARD size_t FindIndexByHash(const uint64_t KeyHash, const ComparableKey& Key) const
 		{
@@ -469,7 +487,7 @@ namespace Bloodshot
 			{
 			}
 
-			FORCEINLINE FIterator(const FIterator& Other) noexcept
+			FORCEINLINE FIterator(const FIterator& Other)
 				: Set(Other.Set)
 				, Iterator(Other.Iterator)
 			{
@@ -485,16 +503,29 @@ namespace Bloodshot
 				return &Iterator->Value;
 			}
 
-			FORCEINLINE FIterator operator++() noexcept
+			FORCEINLINE FIterator& operator++()
 			{
 				++Iterator;
 				return *this;
 			}
 
-			FORCEINLINE FIterator operator++(int) noexcept
+			FORCEINLINE FIterator operator++(int)
 			{
 				FIterator Temp = *this;
 				++Iterator;
+				return Temp;
+			}
+
+			FORCEINLINE FIterator& operator+=(const size_t Offset)
+			{
+				Iterator += Offset;
+				return *this;
+			}
+
+			FORCEINLINE FIterator operator+(const size_t Offset)
+			{
+				FIterator Temp = *this;
+				Temp += Offset;
 				return Temp;
 			}
 
@@ -518,12 +549,12 @@ namespace Bloodshot
 				return (bool)Iterator;
 			}
 
-			NODISCARD FORCEINLINE size_t GetIndex() const noexcept
+			NODISCARD FORCEINLINE size_t GetIndex() const
 			{
 				return Iterator.GetIndex();
 			}
 
-			FORCEINLINE void SetToEnd() noexcept
+			FORCEINLINE void SetToEnd()
 			{
 				Iterator.SetToEnd();
 			}
@@ -544,7 +575,7 @@ namespace Bloodshot
 			{
 			}
 
-			FORCEINLINE FConstIterator(const FConstIterator& Other) noexcept
+			FORCEINLINE FConstIterator(const FConstIterator& Other)
 				: Set(Other.Set)
 				, Iterator(Other.Iterator)
 			{
@@ -560,13 +591,13 @@ namespace Bloodshot
 				return &Iterator->Value;
 			}
 
-			FORCEINLINE FConstIterator operator++() noexcept
+			FORCEINLINE FConstIterator operator++()
 			{
 				++Iterator;
 				return *this;
 			}
 
-			FORCEINLINE FConstIterator operator++(int) noexcept
+			FORCEINLINE FConstIterator operator++(int)
 			{
 				FConstIterator Temp = *this;
 				++Iterator;
@@ -593,12 +624,12 @@ namespace Bloodshot
 				return (bool)Iterator;
 			}
 
-			NODISCARD FORCEINLINE size_t GetIndex() const noexcept
+			NODISCARD FORCEINLINE size_t GetIndex() const
 			{
 				return Iterator.GetIndex();
 			}
 
-			FORCEINLINE void SetToEnd() noexcept
+			FORCEINLINE void SetToEnd()
 			{
 				Iterator.SetToEnd();
 			}
@@ -629,7 +660,7 @@ namespace Bloodshot
 			{
 			}
 
-			FORCEINLINE FRangeForIterator(const FRangeForIterator& Other) noexcept
+			FORCEINLINE FRangeForIterator(const FRangeForIterator& Other)
 				: Set(Other.Set)
 				, Iterator(Other.Iterator)
 			{
@@ -640,7 +671,7 @@ namespace Bloodshot
 				return Iterator->Value;
 			}
 
-			FORCEINLINE FRangeForIterator operator++() noexcept
+			FORCEINLINE FRangeForIterator operator++()
 			{
 				++Iterator;
 				return *this;
@@ -667,7 +698,7 @@ namespace Bloodshot
 			{
 			}
 
-			FORCEINLINE FRangeForConstIterator(const FRangeForConstIterator& Other) noexcept
+			FORCEINLINE FRangeForConstIterator(const FRangeForConstIterator& Other)
 				: Set(Other.Set)
 				, Iterator(Other.Iterator)
 			{
@@ -678,7 +709,7 @@ namespace Bloodshot
 				return Iterator->Value;
 			}
 
-			FORCEINLINE FRangeForConstIterator operator++() noexcept
+			FORCEINLINE FRangeForConstIterator operator++()
 			{
 				++Iterator;
 				return *this;
@@ -701,3 +732,5 @@ namespace Bloodshot
 		FORCEINLINE FRangeForConstIterator end() const { return FRangeForConstIterator(*this, Data.end()); }
 	};
 }
+
+#pragma warning(pop)

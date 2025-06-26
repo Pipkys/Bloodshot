@@ -26,6 +26,6 @@ namespace Bloodshot
 		const std::chrono::high_resolution_clock::time_point StartTimepoint = std::chrono::high_resolution_clock::now();
 		float GlobalTime = 0.f;
 
-		void Tick();
+		static void Tick();
 	};
 }

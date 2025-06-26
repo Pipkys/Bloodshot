@@ -11,25 +11,6 @@ namespace Bloodshot
 			return Instance;
 		}
 
-		void FObjectCore::Dispose()
-		{
-			BS_PROFILE_FUNCTION();
-			for (IObject* const Object : Objects)
-			{
-				FMemory::Free(Object->ObjectClass);
-				DestructElement(Object);
-			}
-			Objects.Dispose();
-
-			for (TPair<uint32_t, FObjectAllocatorView>& ObjectAllocatorPair : ObjectAllocators)
-			{
-				FObjectAllocatorView ObjectAllocatorView = ObjectAllocatorPair.Second;
-				ObjectAllocatorView.CallDestructor();
-				delete ObjectAllocatorView.GetAllocatorPtr();
-			}
-			ObjectAllocators.Dispose();
-		}
-
 		void FObjectCore::DeleteObject(IObject* const Object)
 		{
 			BS_PROFILE_FUNCTION();

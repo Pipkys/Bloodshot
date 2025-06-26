@@ -3,6 +3,7 @@
 #include "Containers/StringFwd.h"
 #include "Misc/CoreMisc.h"
 #include "Platform/Platform.h"
+#include "String/StringManipulations.h"
 #include "Templates/IsCharRange.h"
 #include "Templates/Template.h"
 #include "Templates/TypeHash.h"
@@ -16,15 +17,15 @@ namespace Bloodshot
 	public:
 		using ElementType = InCharType;
 
-		FORCEINLINE TStringView() = default;
+		FORCEINLINE constexpr TStringView() = default;
 
-		FORCEINLINE TStringView(const TStringView& Other) noexcept
+		FORCEINLINE constexpr TStringView(const TStringView& Other)
 			: Data(Other.Data)
 			, Size(Other.Size)
 		{
 		}
 
-		FORCEINLINE TStringView(TStringView&& Other) noexcept
+		FORCEINLINE constexpr TStringView(TStringView&& Other) noexcept
 			: Data(Other.Data)
 			, Size(Other.Size)
 		{
@@ -32,39 +33,39 @@ namespace Bloodshot
 			Other.Size = 0;
 		}
 
-		FORCEINLINE TStringView(const ElementType* InStr) noexcept
+		FORCEINLINE constexpr TStringView(const ElementType* InStr)
 			: Data(InStr)
-			, Size(strlen(InStr))
+			, Size(String::GetSize(InStr))
 		{
 		}
 
-		FORCEINLINE TStringView(const ElementType* InStr, const size_t InSize) noexcept
+		FORCEINLINE constexpr TStringView(const ElementType* InStr, const size_t InSize)
 			: Data(InStr)
 			, Size(InSize)
 		{
 		}
 
 		template<IsCharRange T>
-		FORCEINLINE TStringView(T&& Range)
+		FORCEINLINE constexpr TStringView(T&& Range)
 			: TStringView(Bloodshot::GetData(Range), Bloodshot::GetSize(std::forward<T>(Range)))
 		{
 		}
 
-		FORCEINLINE ~TStringView() = default;
+		FORCEINLINE constexpr ~TStringView() = default;
 
-		NODISCARD FORCEINLINE const ElementType& operator[](const size_t Index) const noexcept
+		NODISCARD FORCEINLINE constexpr const ElementType& operator[](const size_t Index) const
 		{
 			return Data[Index];
 		}
 
-		FORCEINLINE TStringView& operator=(const TStringView& Other) noexcept
+		FORCEINLINE constexpr TStringView& operator=(const TStringView& Other)
 		{
 			Data = Other.Data;
 			Size = Other.Size;
 			return *this;
 		}
 
-		FORCEINLINE TStringView& operator=(TStringView&& Other) noexcept
+		FORCEINLINE constexpr TStringView& operator=(TStringView&& Other) noexcept
 		{
 			Data = Other.Data;
 			Size = Other.Size;
@@ -73,39 +74,44 @@ namespace Bloodshot
 			return *this;
 		}
 
-		FORCEINLINE bool operator==(const TStringView& Other) const noexcept
+		FORCEINLINE constexpr bool operator==(const TStringView& Other) const
 		{
-			return strcmp(Data, Other.Data) == 0;
+			return String::IsEqual(Data, Other.Data);
 		}
 
-		FORCEINLINE bool operator==(const ElementType* Str) const noexcept
+		FORCEINLINE constexpr bool operator==(const ElementType* String) const
 		{
-			return strcmp(Data, Str) == 0;
+			return String::IsEqual(Data, String);
 		}
 
-		NODISCARD FORCEINLINE const ElementType* GetData() const noexcept
+		NODISCARD FORCEINLINE constexpr const ElementType* GetData() const
 		{
 			return Data;
 		}
 
-		NODISCARD FORCEINLINE size_t GetSize() const noexcept
+		NODISCARD FORCEINLINE constexpr size_t GetSize() const
 		{
 			return Size;
 		}
 
-		NODISCARD FORCEINLINE bool IsEmpty() const noexcept
+		NODISCARD FORCEINLINE constexpr bool IsEmpty() const
 		{
 			return !Size;
 		}
 
-		NODISCARD FORCEINLINE TStringView SubStr(const size_t Index, const size_t Count) const noexcept
+		NODISCARD FORCEINLINE constexpr TStringView SubStr(const size_t Index, const size_t Count) const
 		{
 			return TStringView(Data + Index, Count);
 		}
 
-		NODISCARD FORCEINLINE size_t Find(const ElementType* const SubStr) const noexcept
+		NODISCARD FORCEINLINE constexpr TStringView SubStr(const size_t Index) const
 		{
-			const size_t SubStrSize = strlen(SubStr);
+			return TStringView(Data + Index, Size - Index);
+		}
+
+		NODISCARD FORCEINLINE constexpr size_t Find(const ElementType* const SubStr) const
+		{
+			const size_t SubStrSize = String::GetSize(SubStr);
 			size_t SameCharCount = 0;
 			for (size_t i = 0; i < SubStrSize; ++i)
 			{
@@ -116,30 +122,36 @@ namespace Bloodshot
 
 				if (SameCharCount == SubStrSize)
 				{
-					return i - SubStrSize;
+					return i - SubStrSize + 1;
 				}
 			}
 
 			return IReservedValues::NoneIndex;
 		}
 
-		NODISCARD FORCEINLINE bool Find(const ElementType* const SubStr, size_t& OutIndex) const noexcept
+		NODISCARD FORCEINLINE constexpr bool Find(const ElementType* const SubStr, size_t& OutIndex) const
 		{
 			OutIndex = Find(SubStr);
 			return OutIndex != IReservedValues::NoneIndex;
 		}
 
-		NODISCARD FORCEINLINE size_t Find(TStringView Other) const noexcept
+		template<typename T>
+		NODISCARD FORCEINLINE constexpr size_t Find(T&& Range) const
+		{
+			return Find(Bloodshot::GetData(std::forward<T>(Range)));
+		}
+
+		NODISCARD FORCEINLINE constexpr size_t Find(TStringView Other) const
 		{
 			return Find(Other.Data);
 		}
 
-		NODISCARD FORCEINLINE bool Find(TStringView Other, size_t& OutIndex) const noexcept
+		NODISCARD FORCEINLINE constexpr bool Find(TStringView Other, size_t& OutIndex) const
 		{
 			return Find(Other.Data, OutIndex);
 		}
 
-		NODISCARD FORCEINLINE size_t FindChar(const ElementType Char) const noexcept
+		NODISCARD FORCEINLINE constexpr size_t FindChar(const ElementType Char) const
 		{
 			for (size_t i = 0; i < Size; ++i)
 			{
@@ -152,13 +164,13 @@ namespace Bloodshot
 			return IReservedValues::NoneIndex;
 		}
 
-		NODISCARD FORCEINLINE bool FindChar(const ElementType Char, size_t& OutIndex) const noexcept
+		NODISCARD FORCEINLINE constexpr bool FindChar(const ElementType Char, size_t& OutIndex) const
 		{
 			OutIndex = FindChar(Char);
 			return OutIndex != IReservedValues::NoneIndex;
 		}
 
-		NODISCARD FORCEINLINE size_t FindLastChar(const ElementType Char) const noexcept
+		NODISCARD FORCEINLINE constexpr size_t FindLastChar(const ElementType Char) const
 		{
 			for (size_t i = Size; i > 0; --i)
 			{
@@ -171,11 +183,26 @@ namespace Bloodshot
 			return IReservedValues::NoneIndex;
 		}
 
-		NODISCARD FORCEINLINE bool FindLastChar(const ElementType Char, size_t& OutIndex) const noexcept
+		NODISCARD FORCEINLINE constexpr bool FindLastChar(const ElementType Char, size_t& OutIndex) const
 		{
 			OutIndex = FindLastChar(Char);
 			return OutIndex != IReservedValues::NoneIndex;
 		}
+
+		NODISCARD FORCEINLINE constexpr bool Contains(const ElementType* const SubStr) const
+		{
+			return Find(SubStr) != IReservedValues::NoneIndex;
+		}
+
+		template<typename T>
+		NODISCARD FORCEINLINE constexpr bool Contains(T&& Range) const
+		{
+			return Find(std::forward<T>(Range)) != IReservedValues::NoneIndex;
+		}
+
+		// For internal usage only!
+		FORCEINLINE constexpr const ElementType* begin() const { return Data; }
+		FORCEINLINE constexpr const ElementType* end() const { return Data + Size; }
 
 	private:
 		const ElementType* Data = nullptr;

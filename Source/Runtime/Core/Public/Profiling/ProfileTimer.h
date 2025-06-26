@@ -3,6 +3,10 @@
 #ifdef BS_PROFILING_ON
 
 #include "Misc/Timer.h"
+#include "Platform/Platform.h"
+#include "Profiling/Profiler.h"
+
+#include <chrono>
 
 namespace Bloodshot
 {
@@ -11,12 +15,19 @@ namespace Bloodshot
 	public:
 		using Super = FTimer;
 
-		FProfileTimer(const char* FunctionName, const bool bMangled);
-		~FProfileTimer();
+		FORCEINLINE FProfileTimer(const char* InFunctionName)
+			: FunctionName(InFunctionName)
+		{
+		}
+
+		FORCEINLINE ~FProfileTimer()
+		{
+			std::chrono::milliseconds Duration = Super::GetElapsedMilliseconds();
+			FProfiler::WriteFunctionProfile(FunctionName, Duration);
+		}
 
 	private:
 		const char* FunctionName;
-		const bool bMangled;
 	};
 }
 

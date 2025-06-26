@@ -52,22 +52,22 @@ namespace Bloodshot
 				Dispose();
 			}
 
-			NODISCARD FORCEINLINE void* GetAllocation() const noexcept
+			NODISCARD FORCEINLINE void* GetAllocation() const
 			{
 				return Data;
 			}
 
-			NODISCARD FORCEINLINE size_t GetInitialCapacity() const noexcept
+			NODISCARD FORCEINLINE size_t GetInitialCapacity() const
 			{
 				return 0;
 			}
 
-			NODISCARD FORCEINLINE bool HasAllocation() const noexcept
+			NODISCARD FORCEINLINE bool HasAllocation() const
 			{
 				return !!Data;
 			}
 
-			FORCEINLINE void Move(ForAnyElementType& Other) noexcept
+			FORCEINLINE void Move(ForAnyElementType& Other)
 			{
 				BS_CHECK(this != &Other);
 				if (Data)
@@ -86,7 +86,7 @@ namespace Bloodshot
 				return OldData;
 			}
 
-			FORCEINLINE void ConsumeAllocation(void* const InData) const noexcept
+			FORCEINLINE void ConsumeAllocation(void* const InData) const
 			{
 				FMemory::Free(InData);
 			}
@@ -98,12 +98,12 @@ namespace Bloodshot
 					const bool bInvalidResize = !ElementSizeInBytes
 						|| ElementSizeInBytes > std::numeric_limits<int32_t>::max()
 						|| NewSize > std::numeric_limits<size_t>::max() / ElementSizeInBytes;
-					BS_ASSERT(!bInvalidResize, "Invalid heap allocation: CurrentSize: {}, NewSize: {}, ElementSizeInBytes: {}", CurrentSize, NewSize, ElementSizeInBytes);
+					BS_ASSERT(!bInvalidResize, "FDefaultAllocator::ResizeAllocation: Invalid heap allocation: CurrentSize: {}, NewSize: {}, ElementSizeInBytes: {}", CurrentSize, NewSize, ElementSizeInBytes);
 					Data = FMemory::Realloc(Data, NewSize * ElementSizeInBytes);
 				}
 			}
 
-			FORCEINLINE void Dispose() noexcept
+			FORCEINLINE void Dispose()
 			{
 				FMemory::Free(Data);
 				Data = nullptr;
@@ -121,7 +121,7 @@ namespace Bloodshot
 			using Super::ExchangeAllocation;
 
 		public:
-			NODISCARD FORCEINLINE ElementType* GetAllocation() const noexcept
+			NODISCARD FORCEINLINE ElementType* GetAllocation() const
 			{
 				return reinterpret_cast<ElementType*>(Super::GetAllocation());
 			}
@@ -145,17 +145,17 @@ namespace Bloodshot
 				Dispose();
 			}
 
-			NODISCARD FORCEINLINE void* GetAllocation() const noexcept
+			NODISCARD FORCEINLINE void* GetAllocation() const
 			{
 				return InlineData;
 			}
 
-			NODISCARD FORCEINLINE size_t GetInitialCapacity() const noexcept
+			NODISCARD FORCEINLINE size_t GetInitialCapacity() const
 			{
 				return InSize;
 			}
 
-			NODISCARD FORCEINLINE bool HasAllocation() const noexcept
+			NODISCARD FORCEINLINE bool HasAllocation() const
 			{
 				return true;
 			}
@@ -165,7 +165,7 @@ namespace Bloodshot
 				return nullptr;
 			}
 
-			FORCEINLINE void ConsumeAllocation(void* const InData) const noexcept
+			FORCEINLINE void ConsumeAllocation(void* const InData) const
 			{
 			}
 
@@ -173,7 +173,7 @@ namespace Bloodshot
 			{
 			}
 
-			FORCEINLINE void Dispose() noexcept
+			FORCEINLINE void Dispose()
 			{
 			}
 
@@ -189,7 +189,7 @@ namespace Bloodshot
 			using Super::ExchangeAllocation;
 
 		public:
-			NODISCARD FORCEINLINE ElementType* GetAllocation() const noexcept
+			NODISCARD FORCEINLINE ElementType* GetAllocation() const
 			{
 				return reinterpret_cast<ElementType*>(Super::GetAllocation());
 			}
@@ -219,7 +219,7 @@ namespace Bloodshot
 				{
 				}
 
-				NODISCARD FORCEINLINE void* GetAllocatorPtr() const noexcept
+				NODISCARD FORCEINLINE void* GetAllocatorPtr() const
 				{
 					return AllocatorPtr;
 				}
@@ -258,7 +258,7 @@ namespace Bloodshot
 				{
 				}
 
-				NODISCARD FORCEINLINE void* GetAllocatorPtr() const noexcept
+				NODISCARD FORCEINLINE void* GetAllocatorPtr() const
 				{
 					return AllocatorPtr;
 				}

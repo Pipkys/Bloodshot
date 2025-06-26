@@ -23,10 +23,10 @@ namespace Bloodshot
 		return &Instance;
 	}
 
-	bool IObject::IsA(const FClass* const Class) const noexcept
+	bool IObject::IsA(const FClass* const InClass) const
 	{
-		return Class->Name == ObjectClass->Name
-			&& Class->Namespace == ObjectClass->Namespace;
+		return String::IsEqual(ObjectClass->Name, InClass->Name) 
+			&& String::IsEqual(ObjectClass->Namespace, InClass->Namespace);
 	}
 
 	template<>

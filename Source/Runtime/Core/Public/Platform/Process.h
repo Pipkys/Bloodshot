@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Containers/StringFwd.h"
+#include "Containers/StringView.h"
 
 namespace Bloodshot
 {

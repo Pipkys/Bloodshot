@@ -17,8 +17,10 @@ namespace Bloodshot
 	template<typename ElementType>
 	FORCEINLINE void DefaultConstructElements(void* const Elements, const size_t Count)
 	{
-		if (!Count) return;
-
+		if (!Count)
+		{
+			return;
+		}
 		if constexpr (TIsZeroConstructible_V<ElementType>)
 		{
 			memset(Elements, 0, sizeof(ElementType) * Count);
@@ -35,8 +37,10 @@ namespace Bloodshot
 	template<typename DestinationElementType, typename SourceElementType>
 	FORCEINLINE void ConstructElements(void* const Destination, const SourceElementType* const Source, const size_t Count)
 	{
-		if (!Count) return;
-
+		if (!Count)
+		{
+			return;
+		}
 		for (size_t i = 0; i < Count; ++i)
 		{
 			new((DestinationElementType*)Destination + i) DestinationElementType(Source[i]);
@@ -46,8 +50,10 @@ namespace Bloodshot
 	template<typename ElementType>
 	FORCEINLINE void MoveConstructElements(void* const Destination, ElementType* const Source, const size_t Count)
 	{
-		if (!Count) return;
-
+		if (!Count)
+		{
+			return;
+		}
 		if constexpr (std::is_trivially_copy_constructible_v<ElementType>)
 		{
 			memmove(Destination, Source, sizeof(ElementType) * Count);
@@ -64,8 +70,10 @@ namespace Bloodshot
 	template<typename ElementType>
 	FORCEINLINE void CopyAssignElements(ElementType* const Destination, const ElementType* const Source, const size_t Count)
 	{
-		if (!Count) return;
-
+		if (!Count)
+		{
+			return;
+		}
 		if constexpr (std::is_trivially_copy_assignable_v<ElementType>)
 		{
 			memmove(Destination, Source, sizeof(ElementType) * Count);
@@ -82,8 +90,10 @@ namespace Bloodshot
 	template<typename ElementType>
 	FORCEINLINE void MoveAssignElements(ElementType* const Destination, ElementType* const Source, const size_t Count)
 	{
-		if (!Count) return;
-
+		if (!Count)
+		{
+			return;
+		}
 		if constexpr (std::is_trivially_copy_assignable_v<ElementType>)
 		{
 			memmove(Destination, Source, sizeof(ElementType) * Count);
@@ -100,10 +110,12 @@ namespace Bloodshot
 	template<typename ElementType>
 	FORCEINLINE void DestructElements(ElementType* const Elements, const size_t Count)
 	{
-		if (!Count) return;
-
 		if constexpr (!std::is_trivially_destructible_v<ElementType>)
 		{
+			if (!Count)
+			{
+				return;
+			}
 			for (size_t i = 0; i < Count; ++i)
 			{
 				(Elements + i)->~ElementType();

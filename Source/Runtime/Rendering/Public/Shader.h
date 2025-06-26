@@ -4,20 +4,30 @@
 
 namespace Bloodshot
 {
-	class IShader
+	class FShader final
 	{
+		friend class FRHI;
+
 	public:
-		IShader(FStringView Name) : Name(Name) {}
-		virtual ~IShader() {}
+		~FShader();
 
-		virtual void Bind() const noexcept = 0;
-		virtual void Unbind() const noexcept = 0;
+		NODISCARD FORCEINLINE uint32_t GetUniqueID() const
+		{
+			return UniqueID;
+		}
 
-		virtual void SetUniformInt(const char* Name, const int Value) noexcept = 0;
-		virtual void SetUniformFloat(const char* Name, const float Value) noexcept = 0;
-		virtual void SetUniformMat4(const char* Name, const glm::mat4& Value) noexcept = 0;
+		void Bind() const;
+		void Unbind() const;
+
+		void SetUniformInt(FStringView InName, const int InValue);
+		void SetUniformFloat(FStringView InName, const float InValue);
+		void SetUniformVec3(FStringView InName, const glm::vec3& InValue);
+		void SetUniformVec4(FStringView InName, const glm::vec4& InValue);
+		void SetUniformMat4(FStringView InName, const glm::mat4& InValue);
 
 	protected:
-		FString Name;
+		FShader(FStringView InName, FStringView InVertexShaderSrc, FStringView InFragmentShaderSrc);
+
+		uint32_t UniqueID;
 	};
 }

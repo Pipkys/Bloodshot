@@ -10,14 +10,14 @@ namespace Bloodshot::Private::String
 	class FLowLevelStringAllocator final
 	{
 	public:
-		FORCEINLINE char* Allocate(const size_t InSize) noexcept
+		FORCEINLINE char* Allocate(const size_t InSize)
 		{
 			char* Result = Data + Offset;
 			Offset += InSize;
 			return Result;
 		}
 
-		FORCEINLINE void Reset() noexcept
+		FORCEINLINE void Reset()
 		{
 			Offset = 0;
 		}

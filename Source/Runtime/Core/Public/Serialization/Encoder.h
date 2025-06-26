@@ -79,37 +79,6 @@ namespace Bloodshot
 		}
 	};
 
-	//template<typename ElementType, size_t Size>
-	//struct TEncoder<TStaticArray<ElementType, Size>> final
-	//{
-	//	using FStaticArray = TStaticArray<ElementType, Size>;
-	//	using FElementEncoder = TEncoder<std::decay_t<ElementType>>;
-	//
-	//	FEncodedNode Encode(const FStaticArray& StaticArray)
-	//	{
-	//		FEncodedNode Result;
-	//
-	//		for (const ElementType& Element : StaticArray)
-	//		{
-	//			Result.Children.EmplaceBack(FElementEncoder().Encode(Element));
-	//		}
-	//
-	//		return Result;
-	//	}
-	//
-	//	FStaticArray Decode(const FEncodedNode& Node)
-	//	{
-	//		FStaticArray Result;
-	//
-	//		for (size_t i = 0; i < Node.Children.GetSize(); ++i)
-	//		{
-	//			Result.at(i) = std::move(FElementEncoder().Decode(Node.Children[i]));
-	//		}
-	//
-	//		return Result;
-	//	}
-	//};
-
 	template<typename ElementType>
 	struct TEncoder<TList<ElementType>> final
 	{
@@ -211,36 +180,36 @@ namespace Bloodshot
 		}
 	};
 
-	//template<typename ElementType>
-	//struct TEncoder<TSet<ElementType>> final
-	//{
-	//	using FSet = TSet<ElementType>;
-	//	using FElementEncoder = TEncoder<std::decay_t<ElementType>>;
-	//
-	//	FEncodedNode Encode(const FSet& Set)
-	//	{
-	//		FEncodedNode Result;
-	//
-	//		for (const ElementType& Element : Set)
-	//		{
-	//			Result.Children.EmplaceBack(FElementEncoder().Encode(Element));
-	//		}
-	//
-	//		return Result;
-	//	}
-	//
-	//	FSet Decode(const FEncodedNode& Node)
-	//	{
-	//		FSet Result;
-	//
-	//		for (const FEncodedNode& Node : Node.Children)
-	//		{
-	//			Result.emplace(std::move(FElementEncoder().Decode(Node)));
-	//		}
-	//
-	//		return Result;
-	//	}
-	//};
+	template<typename ElementType>
+	struct TEncoder<TSet<ElementType>> final
+	{
+		using FSet = TSet<ElementType>;
+		using FElementEncoder = TEncoder<std::decay_t<ElementType>>;
+	
+		FEncodedNode Encode(const FSet& Set)
+		{
+			FEncodedNode Result;
+	
+			for (const ElementType& Element : Set)
+			{
+				Result.Children.EmplaceBack(FElementEncoder().Encode(Element));
+			}
+	
+			return Result;
+		}
+	
+		FSet Decode(const FEncodedNode& Node)
+		{
+			FSet Result;
+	
+			for (const FEncodedNode& Node : Node.Children)
+			{
+				Result.Emplace(std::move(FElementEncoder().Decode(Node)));
+			}
+	
+			return Result;
+		}
+	};
 
 	template<typename ElementType, typename... ElementTypes>
 	struct TEncoder<TTuple<ElementType, ElementTypes...>> final

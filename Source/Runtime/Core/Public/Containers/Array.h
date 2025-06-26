@@ -101,6 +101,17 @@ namespace Bloodshot
 			return Index;
 		}
 
+		FORCEINLINE void SetIndex(const size_t InIndex)
+		{
+			Index = InIndex;
+		}
+
+		FORCEINLINE void SetIndex(const TIndexedContainerIterator& Other)
+		{
+			BS_CHECK(&Container == &Other.Container);
+			Index = Other.Index;
+		}
+
 		FORCEINLINE void SetToEnd()
 		{
 			Index = Container.GetSize();
@@ -199,9 +210,10 @@ namespace Bloodshot
 		using AllocatorType = InAllocatorType;
 		using ElementAllocatorType = typename TAllocatorTraits<InAllocatorType>::template ForElementType<ElementType>;
 
-		static_assert(IsContiguousAllocator<ElementAllocatorType>, "TArray requires contiguous memory allocator");
+		static_assert(IsContiguousAllocator<ElementAllocatorType>, 
+			"TArray requires contiguous memory allocator");
 
-		FORCEINLINE TArray() noexcept = default;
+		FORCEINLINE TArray() = default;
 
 		FORCEINLINE TArray(const TArray& Other)
 			: Size(Other.Size)
@@ -293,7 +305,7 @@ namespace Bloodshot
 			return GetData()[Index];
 		}
 
-		NODISCARD FORCEINLINE bool operator==(const TArray& Other) const noexcept
+		NODISCARD FORCEINLINE bool operator==(const TArray& Other) const
 		{
 			if (Size != Other.Size)
 			{
@@ -314,42 +326,42 @@ namespace Bloodshot
 			return true;
 		}
 
-		NODISCARD FORCEINLINE ElementAllocatorType& GetAllocator() noexcept
+		NODISCARD FORCEINLINE ElementAllocatorType& GetAllocator()
 		{
 			return Allocator;
 		}
 
-		NODISCARD FORCEINLINE const ElementAllocatorType& GetAllocator() const noexcept
+		NODISCARD FORCEINLINE const ElementAllocatorType& GetAllocator() const
 		{
 			return Allocator;
 		}
 
-		NODISCARD FORCEINLINE ElementType* GetData() noexcept
+		NODISCARD FORCEINLINE ElementType* GetData()
 		{
 			return Allocator.GetAllocation();
 		}
 
-		NODISCARD FORCEINLINE const ElementType* GetData() const noexcept
+		NODISCARD FORCEINLINE const ElementType* GetData() const
 		{
 			return Allocator.GetAllocation();
 		}
 
-		NODISCARD FORCEINLINE size_t GetSize() const noexcept
+		NODISCARD FORCEINLINE size_t GetSize() const
 		{
 			return Size;
 		}
 
-		NODISCARD FORCEINLINE size_t GetCapacity() const noexcept
+		NODISCARD FORCEINLINE size_t GetCapacity() const
 		{
 			return Capacity;
 		}
 
-		NODISCARD FORCEINLINE bool IsEmpty() const noexcept
+		NODISCARD FORCEINLINE bool IsEmpty() const
 		{
 			return !Size;
 		}
 
-		NODISCARD FORCEINLINE bool IsValidIndex(const size_t Index) const noexcept
+		NODISCARD FORCEINLINE bool IsValidIndex(const size_t Index) const
 		{
 			return Index >= 0 && Index < Size;
 		}
@@ -415,7 +427,7 @@ namespace Bloodshot
 			EmplaceBack(std::move(Value));
 		}
 
-		FORCEINLINE void PopBack() noexcept
+		FORCEINLINE void PopBack()
 		{
 			BS_ASSERT(Size, "TArray: PopBack() called on empty Array");
 			DestructElement(GetData() + --Size);
@@ -438,7 +450,7 @@ namespace Bloodshot
 		template<typename... ArgTypes>
 		void EmplaceAt(const size_t Index, ArgTypes&&... Args)
 		{
-			BS_ASSERT(Index >= 0 && Index <= Size, "TArray::EmplaceAt: index out of bounds, index - {}, size - {}", Index, Size);
+			BS_ASSERT(Index >= 0 && Index <= Size, "TArray::EmplaceAt: Index out of bounds, Index - {}, Size - {}", Index, Size);
 
 			if (Index == Size)
 			{
@@ -540,12 +552,20 @@ namespace Bloodshot
 			Size = NewCapacity;
 		}
 
+		void Remove(const ElementType& Value)
+		{
+			const size_t Index = Find(Value);
+			BS_CHECK(Index != IReservedValues::NoneIndex);
+			RemoveAt(Index);
+		}
+		
 		void RemoveAt(const size_t Index, const size_t Count)
 		{
 			RangeCheck(Index, Count);
 			ElementType* const Dest = GetData() + Index;
 			DestructElements(Dest, Count);
-			MoveConstructElements(Dest, Dest + Count, Size - Count);
+			// BSTODO: ??
+			MoveConstructElements(Dest, Dest + Count, Size - Index);
 			Size -= Count;
 		}
 
@@ -641,6 +661,47 @@ namespace Bloodshot
 			return IReservedValues::NoneIndex;
 		}
 
+		template<typename ComparableType>
+		NODISCARD size_t Find(ComparableType&& Value) const
+		{
+			const ElementType* const Data = GetData();
+			for (size_t i = 0; i < Size; ++i)
+			{
+				if (Data[i] == Value)
+				{
+					return i;
+				}
+			}
+
+			return IReservedValues::NoneIndex;
+		}
+
+		template<typename InPredicateType>
+		NODISCARD size_t FindByPredicate(InPredicateType InPredicate) const
+		{
+			const ElementType* const Data = GetData();
+			for (size_t i = 0; i < Size; ++i)
+			{
+				if (InPredicate(Data[i]))
+				{
+					return i;
+				}
+			}
+
+			return IReservedValues::NoneIndex;
+		}
+
+		NODISCARD bool Contains(const ElementType& Value) const
+		{
+			return Find(Value) != IReservedValues::NoneIndex;
+		}
+
+		template<typename ComparableType>
+		NODISCARD bool Contains(ComparableType&& Value) const
+		{
+			return Find(Value) != IReservedValues::NoneIndex;
+		}
+
 		template<IsObject SearchType>
 		NODISCARD bool FindByClass(SearchType** const OutElement = nullptr, size_t* const OutIndex = nullptr) const
 		{
@@ -665,13 +726,23 @@ namespace Bloodshot
 			return false;
 		}
 
+		FORCEINLINE void Reverse()
+		{
+			ElementType* const Data = GetData();
+
+			for (size_t i = 0, j = Size - 1; i < Size / 2; ++i, --j)
+			{
+				std::swap(Data[i], Data[j]);
+			}
+		}
+
 		using FIterator = TIndexedContainerIterator<TArray, ElementType>;
 		using FConstIterator = TIndexedContainerIterator<const TArray, const ElementType>;
 
-		using FRangeBasedForIteratorType = TCheckedPointerIterator<ElementType, false>;
-		using FRangeBasedForConstIteratorType = TCheckedPointerIterator<const ElementType, false>;
-		using FRangeBasedForReverseIteratorType = TCheckedPointerIterator<ElementType, true>;
-		using FRangeBasedForConstReverseIteratorType = TCheckedPointerIterator<const ElementType, true>;
+		using FRangeForIterator = TCheckedPointerIterator<ElementType, false>;
+		using FRangeForConstIterator = TCheckedPointerIterator<const ElementType, false>;
+		using FRangeForReverseIterator = TCheckedPointerIterator<ElementType, true>;
+		using FRangeForConstReverseIterator = TCheckedPointerIterator<const ElementType, true>;
 
 		NODISCARD FORCEINLINE FIterator CreateIterator()
 		{
@@ -684,14 +755,14 @@ namespace Bloodshot
 		}
 
 		// For internal usage only!
-		FORCEINLINE FRangeBasedForIteratorType begin() { return FRangeBasedForIteratorType(GetData(), Size); }
-		FORCEINLINE FRangeBasedForIteratorType end() { return FRangeBasedForIteratorType(GetData() + Size, Size); }
-		FORCEINLINE FRangeBasedForConstIteratorType begin() const { return FRangeBasedForConstIteratorType(GetData(), Size); }
-		FORCEINLINE FRangeBasedForConstIteratorType end() const { return FRangeBasedForConstIteratorType(GetData() + Size, Size); }
-		FORCEINLINE FRangeBasedForReverseIteratorType rbegin() { return FRangeBasedForReverseIteratorType(GetData() + Size, Size); }
-		FORCEINLINE FRangeBasedForReverseIteratorType rend() { return FRangeBasedForReverseIteratorType(GetData(), Size); }
-		FORCEINLINE FRangeBasedForConstReverseIteratorType rbegin() const { return FRangeBasedForConstReverseIteratorType(GetData() + Size, Size); }
-		FORCEINLINE FRangeBasedForConstReverseIteratorType rend() const { return FRangeBasedForConstReverseIteratorType(GetData(), Size); }
+		FORCEINLINE FRangeForIterator begin() { return FRangeForIterator(GetData(), Size); }
+		FORCEINLINE FRangeForIterator end() { return FRangeForIterator(GetData() + Size, Size); }
+		FORCEINLINE FRangeForConstIterator begin() const { return FRangeForConstIterator(GetData(), Size); }
+		FORCEINLINE FRangeForConstIterator end() const { return FRangeForConstIterator(GetData() + Size, Size); }
+		FORCEINLINE FRangeForReverseIterator rbegin() { return FRangeForReverseIterator(GetData() + Size, Size); }
+		FORCEINLINE FRangeForReverseIterator rend() { return FRangeForReverseIterator(GetData(), Size); }
+		FORCEINLINE FRangeForConstReverseIterator rbegin() const { return FRangeForConstReverseIterator(GetData() + Size, Size); }
+		FORCEINLINE FRangeForConstReverseIterator rend() const { return FRangeForConstReverseIterator(GetData(), Size); }
 
 	private:
 		ElementAllocatorType Allocator;
@@ -705,12 +776,12 @@ namespace Bloodshot
 
 		FORCEINLINE void RangeCheck(const size_t Index) const
 		{
-			BS_ASSERT(Index >= 0 && Index < Size, "TArray: index out of bounds, index - {}, size - {}", Index, Size);
+			BS_ASSERT(Index >= 0 && Index < Size, "TArray: Index out of bounds, Index - {}, Size - {}", Index, Size);
 		}
 
 		FORCEINLINE void RangeCheck(const size_t Index, const size_t Count) const
 		{
-			BS_ASSERT(Index >= 0 && Index + Count < Size, "TArray: index out of bounds, index - {}, count - {} size - {}", Index, Count, Size);
+			BS_ASSERT(Index >= 0 && Index + Count <= Size, "TArray: Index out of bounds, Index - {}, Count - {} Size - {}", Index, Count, Size);
 		}
 
 		NODISCARD FORCEINLINE ElementType* ExchangeAllocation(const size_t CurrentSize, const size_t NewSize)
@@ -718,7 +789,7 @@ namespace Bloodshot
 			return Allocator.ExchangeAllocation(CurrentSize, NewSize, sizeof(ElementType));
 		}
 
-		FORCEINLINE void ConsumeAllocation(ElementType* const Data) const noexcept
+		FORCEINLINE void ConsumeAllocation(ElementType* const Data) const
 		{
 			Allocator.ConsumeAllocation((void*)Data);
 		}
